@@ -31,3 +31,6 @@ coverage/
 # Prisma / DB
 *.db
 *.db-journal
+
+# Vite
+apps/web/dist/
