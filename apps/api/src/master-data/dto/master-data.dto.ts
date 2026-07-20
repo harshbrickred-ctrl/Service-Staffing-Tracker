@@ -1,5 +1,6 @@
 import {
   IsBoolean,
+  IsEmail,
   IsInt,
   IsOptional,
   IsString,
@@ -67,4 +68,21 @@ export class UpdateLookupValueDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+}
+
+/** Create TA / Sales / HR member (role is fixed by the route). */
+export class CreateMemberDto {
+  @ApiProperty({ example: 'ta.user@sst.local' })
+  @IsEmail()
+  email!: string;
+
+  @ApiProperty({ example: 'Taylor TA' })
+  @IsString()
+  @MinLength(1)
+  fullName!: string;
+
+  @ApiProperty({ example: 'ChangeMeNow!', minLength: 8 })
+  @IsString()
+  @MinLength(8)
+  password!: string;
 }

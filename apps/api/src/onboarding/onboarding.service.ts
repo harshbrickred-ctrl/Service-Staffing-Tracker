@@ -4,10 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { IdSequenceService } from '../id-sequence/id-sequence.service';
+import { RequirementsService } from '../requirements/requirements.service';
 import {
   CreateOnboardingDto,
   UpdateOnboardingDto,
@@ -19,6 +20,7 @@ export class OnboardingService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly ids: IdSequenceService,
+    private readonly requirements: RequirementsService,
   ) {}
 
   async list(query: Record<string, string | undefined>) {
@@ -77,6 +79,30 @@ export class OnboardingService {
     if (offer.onboarding) {
       throw new ConflictException('Onboarding already exists for offer');
     }
+
+    const req = await this.prisma.requirement.findFirst({
+      where: { id: offer.requirementId, deletedAt: null },
+    });
+    if (!req) throw new NotFoundException('Requirement not found');
+    if (req.status === 'CANCELLED') {
+      throw new BadRequestException(
+        'Cannot start onboarding for a Cancelled requirement',
+      );
+    }
+
+    const joined = await this.prisma.onboarding.count({
+      where: {
+        requirementId: offer.requirementId,
+        statusCode: 'JOINED',
+        deletedAt: null,
+      },
+    });
+    if (joined >= req.numberOfPositions) {
+      throw new BadRequestException(
+        'All positions for this requirement are already filled',
+      );
+    }
+
     const publicId = await this.ids.next('onboarding', 'ONB');
     const row = await this.prisma.onboarding.create({
       data: {
@@ -163,6 +189,26 @@ export class OnboardingService {
     });
     if (!before) throw new NotFoundException('Onboarding not found');
 
+    if (statusCode === 'JOINED' && before.statusCode !== 'JOINED') {
+      const req = await this.prisma.requirement.findUnique({
+        where: { id: before.requirementId },
+      });
+      if (req) {
+        const joined = await this.prisma.onboarding.count({
+          where: {
+            requirementId: req.id,
+            statusCode: 'JOINED',
+            deletedAt: null,
+          },
+        });
+        if (joined >= req.numberOfPositions) {
+          throw new BadRequestException(
+            'All positions for this requirement are already filled',
+          );
+        }
+      }
+    }
+
     const row = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.onboarding.update({
         where: { id },
@@ -182,37 +228,32 @@ export class OnboardingService {
         },
       });
 
-      if (statusCode === 'JOINED' && before.statusCode !== 'JOINED') {
-        const req = await tx.requirement.findUnique({
-          where: { id: before.requirementId },
-        });
-        if (req) {
-          const joined = await tx.onboarding.count({
-            where: {
-              requirementId: req.id,
-              statusCode: 'JOINED',
-              deletedAt: null,
-            },
-          });
-          if (joined >= req.numberOfPositions && req.status === 'ACTIVE') {
-            await tx.requirement.update({
-              where: { id: req.id },
-              data: { status: 'CLOSED' },
-            });
-          }
-        }
+      await this.audit.log(
+        {
+          entityType: 'Onboarding',
+          entityId: id,
+          action: 'STATUS',
+          actorUserId: actorId,
+          before: { statusCode: before.statusCode },
+          after: { statusCode: updated.statusCode },
+        },
+        tx,
+      );
+
+      if (
+        statusCode === 'JOINED' ||
+        before.statusCode === 'JOINED'
+      ) {
+        await this.requirements.syncFillStatus(
+          before.requirementId,
+          actorId,
+          tx,
+        );
       }
+
       return updated;
     });
 
-    await this.audit.log({
-      entityType: 'Onboarding',
-      entityId: id,
-      action: 'STATUS',
-      actorUserId: actorId,
-      before: { statusCode: before.statusCode },
-      after: { statusCode: row.statusCode },
-    });
     return row;
   }
 }

@@ -8,9 +8,10 @@ import {
   IsUUID,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RequirementStatus } from '@prisma/client';
+import { RequirementStatus } from '../../prisma/client';
 
 export class CreateRequirementDto {
   @ApiProperty({ example: '2026-07-07' })
@@ -41,58 +42,71 @@ export class CreateRequirementDto {
 
   @ApiProperty({ example: 'HIGH' })
   @IsString()
+  @MinLength(1)
   priorityCode!: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ format: 'uuid', nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsUUID()
-  taOwnerId?: string;
+  taOwnerId?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
-  taHandoffDate?: string;
+  taHandoffDate?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
-  targetClosureDate?: string;
+  targetClosureDate?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  remarks?: string;
+  remarks?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  experience?: string;
+  experience?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
-  jobLocation?: string;
+  jobLocation?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsNumber()
-  minBudget?: number;
+  @Min(0)
+  minBudget?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsNumber()
-  maxBudget?: number;
+  @Min(0)
+  maxBudget?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsInt()
-  durationMonths?: number;
+  @Min(1)
+  durationMonths?: number | null;
 }
 
 export class UpdateRequirementDto {
   @ApiPropertyOptional()
   @IsOptional()
+  @IsDateString()
+  requirementDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
+  @MinLength(1)
   roleSkill?: string;
 
   @ApiPropertyOptional()
@@ -116,54 +130,62 @@ export class UpdateRequirementDto {
   @IsUUID()
   salesOwnerId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsUUID()
   taOwnerId?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MinLength(1)
   priorityCode?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
   taHandoffDate?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined && v !== '')
   @IsDateString()
   targetClosureDate?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
   remarks?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
   experience?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
   jobLocation?: string | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   minBudget?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsNumber()
+  @Min(0)
   maxBudget?: number | null;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
+  @ValidateIf((_, v) => v !== null && v !== undefined)
   @IsInt()
+  @Min(1)
   durationMonths?: number | null;
 }
 
@@ -172,3 +194,10 @@ export class RequirementStatusDto {
   @IsEnum(RequirementStatus)
   status!: RequirementStatus;
 }
+
+/** Fields a TA user may update on an assigned requirement. */
+export const TA_UPDATE_FIELDS = [
+  'taOwnerId',
+  'taHandoffDate',
+  'remarks',
+] as const;

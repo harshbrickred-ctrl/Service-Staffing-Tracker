@@ -3,16 +3,28 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
+import { Role } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import {
   CreateClientDto,
   CreateJobFamilyDto,
   CreateLookupValueDto,
+  CreateMemberDto,
   UpdateClientDto,
   UpdateJobFamilyDto,
   UpdateLookupValueDto,
 } from './dto/master-data.dto';
+
+const MEMBER_SELECT = {
+  id: true,
+  email: true,
+  fullName: true,
+  role: true,
+  isActive: true,
+  createdAt: true,
+} as const;
 
 @Injectable()
 export class MasterDataService {
@@ -176,5 +188,46 @@ export class MasterDataService {
       after: row,
     });
     return row;
+  }
+
+  listMembers(role: Role) {
+    return this.prisma.user.findMany({
+      where: {
+        deletedAt: null,
+        isActive: true,
+        role,
+      },
+      select: MEMBER_SELECT,
+      orderBy: { fullName: 'asc' },
+    });
+  }
+
+  async createMember(role: Role, dto: CreateMemberDto, actorId: string) {
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing && !existing.deletedAt) {
+      throw new ConflictException('Email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: dto.fullName.trim(),
+        role,
+        passwordHash,
+        isActive: true,
+      },
+      select: MEMBER_SELECT,
+    });
+
+    await this.audit.log({
+      entityType: 'User',
+      entityId: user.id,
+      action: 'CREATE',
+      actorUserId: actorId,
+      after: user,
+    });
+    return user;
   }
 }

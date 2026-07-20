@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../prisma/client';
 import { normalizeEmail, normalizeMobile } from '@sst/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
@@ -114,6 +114,11 @@ export class CandidatesService {
       where: { id: dto.requirementId, deletedAt: null },
     });
     if (!req) throw new NotFoundException('Requirement not found');
+    if (req.status === 'CANCELLED' || req.status === 'CLOSED') {
+      throw new BadRequestException(
+        'Cannot add candidates to a Cancelled or Closed requirement',
+      );
+    }
 
     const mobileNormalized = normalizeMobile(dto.mobile);
     const emailNormalized = normalizeEmail(dto.email);

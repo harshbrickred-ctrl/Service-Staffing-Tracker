@@ -16,7 +16,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role } from '../prisma/client';
 import { CandidatesService } from './candidates.service';
 import {
   CreateCandidateDto,

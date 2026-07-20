@@ -15,12 +15,13 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role } from '../prisma/client';
 import { MasterDataService } from './master-data.service';
 import {
   CreateClientDto,
   CreateJobFamilyDto,
   CreateLookupValueDto,
+  CreateMemberDto,
   UpdateClientDto,
   UpdateJobFamilyDto,
   UpdateLookupValueDto,
@@ -172,5 +173,85 @@ export class MasterDataController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.master.updateJobFamily(id, dto, user.id);
+  }
+
+  // --- Role members (TA / Sales / HR) ---
+
+  @Get('ta-members')
+  @ApiOperation({
+    operationId: 'listTaMembers',
+    summary: 'List TA members',
+  })
+  @ApiOkResponse({ description: 'Active TA users' })
+  @ApiProtectedErrors()
+  listTaMembers() {
+    return this.master.listMembers(Role.TA);
+  }
+
+  @Roles(Role.ADMIN)
+  @Post('ta-members')
+  @ApiOperation({
+    operationId: 'createTaMember',
+    summary: 'Create TA member (Admin)',
+  })
+  @ApiCreatedResponse({ description: 'Created TA member' })
+  @ApiMutateErrors()
+  createTaMember(
+    @Body() dto: CreateMemberDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.master.createMember(Role.TA, dto, user.id);
+  }
+
+  @Get('sales-members')
+  @ApiOperation({
+    operationId: 'listSalesMembers',
+    summary: 'List Sales members',
+  })
+  @ApiOkResponse({ description: 'Active Sales users' })
+  @ApiProtectedErrors()
+  listSalesMembers() {
+    return this.master.listMembers(Role.SALES);
+  }
+
+  @Roles(Role.ADMIN)
+  @Post('sales-members')
+  @ApiOperation({
+    operationId: 'createSalesMember',
+    summary: 'Create Sales member (Admin)',
+  })
+  @ApiCreatedResponse({ description: 'Created Sales member' })
+  @ApiMutateErrors()
+  createSalesMember(
+    @Body() dto: CreateMemberDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.master.createMember(Role.SALES, dto, user.id);
+  }
+
+  @Get('hr-members')
+  @ApiOperation({
+    operationId: 'listHrMembers',
+    summary: 'List HR members',
+  })
+  @ApiOkResponse({ description: 'Active HR users' })
+  @ApiProtectedErrors()
+  listHrMembers() {
+    return this.master.listMembers(Role.HR);
+  }
+
+  @Roles(Role.ADMIN)
+  @Post('hr-members')
+  @ApiOperation({
+    operationId: 'createHrMember',
+    summary: 'Create HR member (Admin)',
+  })
+  @ApiCreatedResponse({ description: 'Created HR member' })
+  @ApiMutateErrors()
+  createHrMember(
+    @Body() dto: CreateMemberDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.master.createMember(Role.HR, dto, user.id);
   }
 }

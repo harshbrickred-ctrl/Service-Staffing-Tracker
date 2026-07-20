@@ -40,6 +40,7 @@ export function OffersPage() {
       toast.success('Offer created');
       setShowForm(false);
       qc.invalidateQueries({ queryKey: ['offers'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: () => toast.error('Offer create failed (candidate must be selected)'),
   });
@@ -50,6 +51,7 @@ export function OffersPage() {
     onSuccess: () => {
       toast.success('Offer status updated');
       qc.invalidateQueries({ queryKey: ['offers'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 

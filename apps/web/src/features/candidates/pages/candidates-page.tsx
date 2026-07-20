@@ -54,6 +54,8 @@ export function CandidatesPage() {
       } else toast.success('Candidate created');
       setShowForm(false);
       qc.invalidateQueries({ queryKey: ['candidates'] });
+      qc.invalidateQueries({ queryKey: ['requirements'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: () => toast.error('Failed to create candidate'),
   });
@@ -64,6 +66,7 @@ export function CandidatesPage() {
     onSuccess: () => {
       toast.success('Selection updated');
       qc.invalidateQueries({ queryKey: ['candidates'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: () => toast.error('Select failed'),
   });
