@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api from '@/shared/lib/api';
@@ -12,6 +12,7 @@ import { useAuth } from '@/features/auth/auth-context';
 import {
   getRequirement,
   listRequirementActivity,
+  replaceRequirement,
   setRequirementStatus,
   updateRequirement,
 } from '../api/requirements.api';
@@ -23,7 +24,7 @@ import {
 import { RequirementForm } from '../components/requirement-form';
 import { ClosureStatusChip } from '../components/closure-status-chip';
 import {
-  toCreateBody,
+  toRequirementBody,
   type RequirementFormValues,
 } from '../requirement.schema';
 
@@ -39,9 +40,10 @@ function money(value?: number | string | null) {
 
 export function RequirementDetailPage() {
   const { id = '' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(() => searchParams.get('edit') === '1');
   const [tab, setTab] = useState<'details' | 'candidates' | 'activity'>(
     'details',
   );
@@ -54,7 +56,6 @@ export function RequirementDetailPage() {
 
   const masters = useQuery({
     queryKey: requirementKeys.masters(),
-    enabled: editing,
     queryFn: async () => {
       const [clients, families, priorities, taUsers, salesUsers] =
         await Promise.all([
@@ -110,19 +111,28 @@ export function RequirementDetailPage() {
 
   const update = useMutation({
     mutationFn: async (values: RequirementFormValues) => {
-      const body = toCreateBody(values, user?.id);
+      const current = detail.data;
+      if (!current) throw new Error('Requirement not loaded');
+
       if (user?.role === 'TA') {
+        const body = toRequirementBody(values, current.salesOwnerId);
         return updateRequirement(id, {
           taOwnerId: body.taOwnerId,
           taHandoffDate: body.taHandoffDate,
           remarks: body.remarks,
         });
       }
-      return updateRequirement(id, body);
+      const salesOwnerId =
+        user?.role === 'ADMIN'
+          ? values.salesOwnerId || current.salesOwnerId
+          : current.salesOwnerId;
+      return replaceRequirement(id, toRequirementBody(values, salesOwnerId));
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
       toast.success('Requirement updated');
       setEditing(false);
+      setSearchParams({}, { replace: true });
+      qc.setQueryData(requirementKeys.detail(id), updated);
       invalidateAll();
     },
     onError: (err: unknown) => {
@@ -136,8 +146,17 @@ export function RequirementDetailPage() {
   });
 
   useEffect(() => {
-    setEditing(false);
-  }, [id]);
+    setEditing(searchParams.get('edit') === '1');
+  }, [id, searchParams]);
+
+  const setEditingMode = (next: boolean) => {
+    setEditing(next);
+    if (next) {
+      setSearchParams({ edit: '1' }, { replace: true });
+    } else {
+      setSearchParams({}, { replace: true });
+    }
+  };
 
   if (detail.isLoading) return <Skeleton className="h-40" />;
   if (detail.isError || !detail.data) {
@@ -152,7 +171,9 @@ export function RequirementDetailPage() {
   }
 
   const r = detail.data;
-  const canEditFull = user?.role === 'ADMIN' || user?.role === 'SALES';
+  const canEditFull =
+    user?.role === 'ADMIN' ||
+    (user?.role === 'SALES' && r.salesOwnerId === user.id);
   const canEditTa =
     user?.role === 'TA' && (!r.taOwnerId || r.taOwnerId === user.id);
   const canEdit = canEditFull || canEditTa;
@@ -222,9 +243,9 @@ export function RequirementDetailPage() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setEditing((e) => !e)}
+              onClick={() => setEditingMode(!editing)}
             >
-              {editing ? 'Cancel edit' : canEditFull ? 'Edit intake' : 'Edit TA fields'}
+              {editing ? 'Cancel' : canEditFull ? 'Edit' : 'Edit TA fields'}
             </Button>
           )}
         </div>
@@ -262,19 +283,34 @@ export function RequirementDetailPage() {
 
       {tab === 'details' && (
         <>
-          {editing && masters.data ? (
+          {editing ? (
             <div className="mb-4">
-              <RequirementForm
-                key={r.updatedAt ?? r.id}
-                masters={masters.data}
-                defaultValues={formDefaults}
-                submitLabel="Save changes"
-                isPending={update.isPending}
-                showSalesOwner={canEditFull}
-                taFieldsOnly={user?.role === 'TA'}
-                onCancel={() => setEditing(false)}
-                onSubmit={(values) => update.mutate(values)}
-              />
+              {masters.isLoading || !masters.data ? (
+                <Skeleton className="h-64" />
+              ) : masters.isError ? (
+                <p className="text-sm text-destructive">
+                  Failed to load form data.{' '}
+                  <button
+                    className="underline"
+                    type="button"
+                    onClick={() => masters.refetch()}
+                  >
+                    Retry
+                  </button>
+                </p>
+              ) : (
+                <RequirementForm
+                  key={r.updatedAt ?? r.id}
+                  masters={masters.data}
+                  defaultValues={formDefaults}
+                  submitLabel="Save changes"
+                  isPending={update.isPending}
+                  showSalesOwner={user?.role === 'ADMIN'}
+                  taFieldsOnly={user?.role === 'TA'}
+                  onCancel={() => setEditingMode(false)}
+                  onSubmit={(values) => update.mutate(values)}
+                />
+              )}
             </div>
           ) : (
             <div className="grid gap-4">

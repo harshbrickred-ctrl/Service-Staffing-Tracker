@@ -92,6 +92,9 @@ export type CreateRequirementBody = {
 
 export type UpdateRequirementBody = Partial<CreateRequirementBody>;
 
+/** Full replacement body for PUT /requirements/:id (same shape as create). */
+export type ReplaceRequirementBody = CreateRequirementBody;
+
 export type AuditEntry = {
   id: string;
   entityType: string;

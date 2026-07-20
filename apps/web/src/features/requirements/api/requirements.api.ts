@@ -5,6 +5,7 @@ import type {
   Requirement,
   RequirementListParams,
   RequirementListResponse,
+  ReplaceRequirementBody,
   UpdateRequirementBody,
 } from './requirements.types';
 
@@ -22,6 +23,14 @@ export async function getRequirement(id: string) {
 
 export async function createRequirement(body: CreateRequirementBody) {
   const { data } = await api.post<Requirement>('/requirements', body);
+  return data;
+}
+
+export async function replaceRequirement(
+  id: string,
+  body: ReplaceRequirementBody,
+) {
+  const { data } = await api.put<Requirement>(`/requirements/${id}`, body);
   return data;
 }
 
