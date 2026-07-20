@@ -7,7 +7,10 @@
  * 2. POST /api/v1/requirements with core fields only → expect ACTIVE,
  *    openPositions = numberOfPositions, closedPositions = 0,
  *    closureStatus = ON_TRACK, taHandoffSlaRag from requirement age.
- * 3. PATCH handoff + TA owner → taReadyReqId set, SLA freezes at handoff age.
+ * 3. PUT /api/v1/requirements/:id (Sales owner) → full-body edit of intake fields;
+ *    PATCH remains for partial updates (TA limited fields).
+ *    Sales cannot edit another owner's requirement (403).
+ * 4. PATCH handoff + TA owner → taReadyReqId set, SLA freezes at handoff age.
  * 4. As TA: POST /candidates on ACTIVE req → 201; on CANCELLED/CLOSED → 400.
  * 5. Select candidate → create offer → ACCEPTED → create onboarding → JOINED.
  * 6. Confirm requirement open/closed recount; when filled → status CLOSED,

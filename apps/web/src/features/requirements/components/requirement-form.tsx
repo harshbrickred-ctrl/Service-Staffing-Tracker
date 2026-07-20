@@ -149,7 +149,7 @@ export function RequirementForm({
               ))}
             </select>
           </Field>
-          {showSalesOwner && (
+          {showSalesOwner ? (
             <Field label="Sales Owner *" error={errors.salesOwnerId?.message}>
               <select
                 className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
@@ -163,6 +163,8 @@ export function RequirementForm({
                 ))}
               </select>
             </Field>
+          ) : (
+            <input type="hidden" {...register('salesOwnerId')} />
           )}
         </div>
       </Section>

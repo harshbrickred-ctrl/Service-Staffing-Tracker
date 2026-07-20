@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -76,11 +77,28 @@ export class RequirementsController {
     return this.requirements.create(dto, user);
   }
 
+  @Roles(Role.ADMIN, Role.SALES)
+  @Put(':id')
+  @ApiOperation({
+    operationId: 'replaceRequirement',
+    summary: 'Replace requirement intake fields (Sales/Admin; full body)',
+  })
+  @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
+  @ApiOkResponse({ description: 'Updated requirement' })
+  @ApiMutateErrors()
+  replace(
+    @Param('id') id: string,
+    @Body() dto: CreateRequirementDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.requirements.replace(id, dto, user);
+  }
+
   @Roles(Role.ADMIN, Role.SALES, Role.TA)
   @Patch(':id')
   @ApiOperation({
     operationId: 'updateRequirement',
-    summary: 'Update requirement (Sales/Admin; TA limited fields)',
+    summary: 'Partial update (TA limited fields; prefer PUT for Sales full edit)',
   })
   @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
   @ApiOkResponse({ description: 'Updated requirement' })
