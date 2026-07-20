@@ -21,6 +21,13 @@ export class CandidatesService {
     private readonly ids: IdSequenceService,
   ) {}
 
+  private toCandidateResponse<T extends { feedbackCode?: string | null }>(
+    row: T,
+  ) {
+    const { feedbackCode, ...rest } = row;
+    return { ...rest, candidateStatus: feedbackCode ?? null };
+  }
+
   private async duplicateFlags(mobileNorm: string, emailNorm: string, excludeId?: string) {
     const [mobileDupes, emailDupes] = await Promise.all([
       this.prisma.candidate.count({
@@ -87,7 +94,12 @@ export class CandidatesService {
       }),
       this.prisma.candidate.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    return {
+      items: items.map((row) => this.toCandidateResponse(row)),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async get(id: string) {
@@ -106,7 +118,7 @@ export class CandidatesService {
       row.emailNormalized,
       row.id,
     );
-    return { ...row, ...flags };
+    return { ...this.toCandidateResponse(row), ...flags };
   }
 
   async create(dto: CreateCandidateDto, actorId: string) {
@@ -136,7 +148,7 @@ export class CandidatesService {
         emailNormalized,
         source: dto.source,
         stageCode: dto.stageCode,
-        feedbackCode: dto.feedbackCode,
+        feedbackCode: dto.candidateStatus,
         profileSubmittedDate: dto.profileSubmittedDate
           ? new Date(dto.profileSubmittedDate)
           : undefined,
@@ -155,7 +167,7 @@ export class CandidatesService {
       actorUserId: actorId,
       after: row,
     });
-    return { ...row, ...flags };
+    return { ...this.toCandidateResponse(row), ...flags };
   }
 
   async update(id: string, dto: UpdateCandidateDto, actorId: string) {
@@ -181,7 +193,7 @@ export class CandidatesService {
         emailNormalized: dto.email ? emailNormalized : undefined,
         source: dto.source,
         stageCode: dto.stageCode,
-        feedbackCode: dto.feedbackCode,
+        feedbackCode: dto.candidateStatus,
         profileSubmittedDate:
           dto.profileSubmittedDate === undefined
             ? undefined
@@ -216,7 +228,7 @@ export class CandidatesService {
       before,
       after: row,
     });
-    return { ...row, ...flags };
+    return { ...this.toCandidateResponse(row), ...flags };
   }
 
   async select(id: string, selected: boolean, actorId: string) {
@@ -250,6 +262,6 @@ export class CandidatesService {
       before: { selected: before.selected },
       after: { selected: row.selected },
     });
-    return row;
+    return this.toCandidateResponse(row);
   }
 }

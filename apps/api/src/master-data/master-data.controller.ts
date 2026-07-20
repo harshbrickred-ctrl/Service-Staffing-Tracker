@@ -59,6 +59,24 @@ export class MasterDataController {
     return this.master.listLookups(type);
   }
 
+  @Roles(Role.ADMIN, Role.TA)
+  @Get('candidate-status')
+  @ApiOperation({
+    operationId: 'listCandidateStatus',
+    summary: 'List candidate statuses (TA/Admin)',
+  })
+  @ApiOkResponse({
+    description: 'Candidate status labels',
+    schema: {
+      type: 'array',
+      items: { type: 'string', example: 'Selected' },
+    },
+  })
+  @ApiProtectedErrors()
+  listCandidateStatus() {
+    return this.master.listCandidateStatus();
+  }
+
   @Roles(Role.ADMIN)
   @Post('lookups/:type')
   @ApiOperation({
