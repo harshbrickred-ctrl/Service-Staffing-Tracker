@@ -1,90 +1,181 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import api from '@/shared/lib/api';
 import { PageFade } from '@/shared/components/page-fade';
 import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Label } from '@/shared/components/ui/label';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { RagChip } from '@/shared/components/rag-chip';
-import type { Rag } from '@sst/shared-types';
 import { useAuth } from '@/features/auth/auth-context';
-
-type DirectoryUser = { id: string; fullName: string; email: string };
+import {
+  getRequirement,
+  listRequirementActivity,
+  setRequirementStatus,
+  updateRequirement,
+} from '../api/requirements.api';
+import type { DirectoryUser } from '../api/requirements.types';
+import {
+  dashboardKeys,
+  requirementKeys,
+} from '../hooks/requirement-query-keys';
+import { RequirementForm } from '../components/requirement-form';
+import { ClosureStatusChip } from '../components/closure-status-chip';
+import {
+  toCreateBody,
+  type RequirementFormValues,
+} from '../requirement.schema';
 
 function toDateInput(value?: string | null) {
   if (!value) return '';
   return String(value).slice(0, 10);
 }
 
+function money(value?: number | string | null) {
+  if (value == null || value === '') return '—';
+  return String(value);
+}
+
 export function RequirementDetailPage() {
-  const { id } = useParams();
+  const { id = '' } = useParams();
   const { user } = useAuth();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
-  const [taOwnerId, setTaOwnerId] = useState('');
-  const [taHandoffDate, setTaHandoffDate] = useState('');
-  const [targetClosureDate, setTargetClosureDate] = useState('');
+  const [tab, setTab] = useState<'details' | 'candidates' | 'activity'>(
+    'details',
+  );
 
   const detail = useQuery({
-    queryKey: ['requirement', id],
-    queryFn: async () => (await api.get(`/requirements/${id}`)).data,
+    queryKey: requirementKeys.detail(id),
+    queryFn: () => getRequirement(id),
     enabled: !!id,
   });
 
-  const taUsers = useQuery({
-    queryKey: ['directory', 'TA'],
-    queryFn: async () =>
-      (await api.get('/users/directory', { params: { role: 'TA' } }))
-        .data as DirectoryUser[],
+  const masters = useQuery({
+    queryKey: requirementKeys.masters(),
     enabled: editing,
+    queryFn: async () => {
+      const [clients, families, priorities, taUsers, salesUsers] =
+        await Promise.all([
+          api.get('/master-data/clients'),
+          api.get('/master-data/job-families'),
+          api.get('/master-data/lookups/PRIORITY'),
+          api.get('/users/directory', { params: { role: 'TA' } }),
+          api.get('/users/directory', { params: { role: 'SALES' } }),
+        ]);
+      return {
+        clients: clients.data as { id: string; name: string }[],
+        families: families.data as { id: string; name: string }[],
+        priorities: priorities.data as { code: string; label: string }[],
+        taUsers: taUsers.data as DirectoryUser[],
+        salesUsers: salesUsers.data as DirectoryUser[],
+      };
+    },
   });
 
-  useEffect(() => {
-    if (detail.data) {
-      setTaOwnerId(detail.data.taOwnerId ?? '');
-      setTaHandoffDate(toDateInput(detail.data.taHandoffDate));
-      setTargetClosureDate(toDateInput(detail.data.targetClosureDate));
-    }
-  }, [detail.data]);
+  const candidates = useQuery({
+    queryKey: ['candidates', { requirementId: id }],
+    enabled: tab === 'candidates' && !!id,
+    queryFn: async () =>
+      (await api.get('/candidates', { params: { requirementId: id } })).data,
+  });
+
+  const activity = useQuery({
+    queryKey: requirementKeys.activity(id),
+    enabled: tab === 'activity' && !!id && user?.role === 'ADMIN',
+    queryFn: () => listRequirementActivity(id),
+  });
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: requirementKeys.all });
+    qc.invalidateQueries({ queryKey: dashboardKeys.all });
+  };
 
   const status = useMutation({
-    mutationFn: async (s: string) =>
-      (await api.post(`/requirements/${id}/status`, { status: s })).data,
+    mutationFn: async (s: string) => setRequirementStatus(id, s),
     onSuccess: () => {
       toast.success('Status updated');
-      qc.invalidateQueries({ queryKey: ['requirement', id] });
-      qc.invalidateQueries({ queryKey: ['requirements'] });
+      invalidateAll();
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string | string[] } } })
+          ?.response?.data?.message;
+      toast.error(
+        Array.isArray(msg) ? msg.join(', ') : msg || 'Status update failed',
+      );
     },
   });
 
   const update = useMutation({
-    mutationFn: async () =>
-      (
-        await api.patch(`/requirements/${id}`, {
-          taOwnerId: taOwnerId || null,
-          taHandoffDate: taHandoffDate || null,
-          targetClosureDate: targetClosureDate || null,
-        })
-      ).data,
-    onSuccess: () => {
-      toast.success('TA assignment and dates updated');
-      setEditing(false);
-      qc.invalidateQueries({ queryKey: ['requirement', id] });
-      qc.invalidateQueries({ queryKey: ['requirements'] });
+    mutationFn: async (values: RequirementFormValues) => {
+      const body = toCreateBody(values, user?.id);
+      if (user?.role === 'TA') {
+        return updateRequirement(id, {
+          taOwnerId: body.taOwnerId,
+          taHandoffDate: body.taHandoffDate,
+          remarks: body.remarks,
+        });
+      }
+      return updateRequirement(id, body);
     },
-    onError: () => toast.error('Update failed'),
+    onSuccess: () => {
+      toast.success('Requirement updated');
+      setEditing(false);
+      invalidateAll();
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string | string[] } } })
+          ?.response?.data?.message;
+      toast.error(
+        Array.isArray(msg) ? msg.join(', ') : msg || 'Update failed',
+      );
+    },
   });
 
+  useEffect(() => {
+    setEditing(false);
+  }, [id]);
+
   if (detail.isLoading) return <Skeleton className="h-40" />;
-  if (!detail.data) return <p className="text-destructive">Not found</p>;
+  if (detail.isError || !detail.data) {
+    return (
+      <p className="text-destructive">
+        Requirement not found.{' '}
+        <button className="underline" onClick={() => detail.refetch()}>
+          Retry
+        </button>
+      </p>
+    );
+  }
 
   const r = detail.data;
-  const canEdit =
-    user?.role === 'ADMIN' || user?.role === 'SALES' || user?.role === 'TA';
+  const canEditFull = user?.role === 'ADMIN' || user?.role === 'SALES';
+  const canEditTa =
+    user?.role === 'TA' && (!r.taOwnerId || r.taOwnerId === user.id);
+  const canEdit = canEditFull || canEditTa;
   const canStatus = user?.role === 'ADMIN' || user?.role === 'SALES';
+
+  const formDefaults: RequirementFormValues = {
+    requirementDate: toDateInput(r.requirementDate),
+    clientId: r.clientId,
+    roleSkill: r.roleSkill,
+    jobFamilyId: r.jobFamilyId,
+    numberOfPositions: r.numberOfPositions,
+    salesOwnerId: r.salesOwnerId,
+    priorityCode: r.priorityCode,
+    taOwnerId: r.taOwnerId ?? '',
+    taHandoffDate: toDateInput(r.taHandoffDate),
+    targetClosureDate: toDateInput(r.targetClosureDate),
+    remarks: r.remarks ?? '',
+    experience: r.experience ?? '',
+    jobLocation: r.jobLocation ?? '',
+    minBudget: r.minBudget == null ? '' : Number(r.minBudget),
+    maxBudget: r.maxBudget == null ? '' : Number(r.maxBudget),
+    durationMonths: r.durationMonths ?? '',
+  };
 
   return (
     <PageFade>
@@ -96,18 +187,29 @@ export function RequirementDetailPage() {
           ← Requirements
         </Link>
       </div>
+
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{r.roleSkill}</h1>
           <p className="font-mono text-sm text-primary">{r.publicId}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <RagChip rag={r.taHandoffSlaRag as Rag} />
+          <RagChip rag={r.taHandoffSlaRag} />
+          <ClosureStatusChip status={r.closureStatus} />
           {canStatus && (
             <select
               className="h-9 rounded-md border border-input bg-card px-2 text-sm"
               value={r.status}
-              onChange={(e) => status.mutate(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                if (
+                  (next === 'CANCELLED' || next === 'CLOSED') &&
+                  !window.confirm(`Mark requirement as ${next}?`)
+                ) {
+                  return;
+                }
+                status.mutate(next);
+              }}
             >
               {['ACTIVE', 'ON_HOLD', 'CANCELLED', 'CLOSED'].map((s) => (
                 <option key={s} value={s}>
@@ -122,101 +224,212 @@ export function RequirementDetailPage() {
               variant="outline"
               onClick={() => setEditing((e) => !e)}
             >
-              {editing ? 'Cancel edit' : 'Edit TA / dates'}
+              {editing ? 'Cancel edit' : canEditFull ? 'Edit intake' : 'Edit TA fields'}
             </Button>
           )}
-          <Button asChild variant="outline" size="sm">
-            <Link to={`/candidates?requirementId=${r.id}`}>Candidates</Link>
-          </Button>
         </div>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-md border border-border bg-card p-4 sm:grid-cols-3 text-sm">
-        <Field
-          label="Requirement age (auto)"
-          value={`${r.requirementAgeDays} days`}
-        />
-        <Field label="Open positions (auto)" value={String(r.openPositions)} />
-        <Field
-          label="Closed positions (auto)"
-          value={String(r.closedPositions)}
-        />
-      </div>
-
-      {editing && (
-        <form
-          className="mb-4 grid gap-3 rounded-md border border-primary/20 bg-accent/30 p-4 sm:grid-cols-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            update.mutate();
-          }}
-        >
-          <div className="space-y-1">
-            <Label>Assign to TA</Label>
-            <select
-              className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
-              value={taOwnerId}
-              onChange={(e) => setTaOwnerId(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                Select TA…
-              </option>
-              {(taUsers.data ?? []).map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.fullName} ({u.email})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>TA handoff date</Label>
-            <Input
-              type="date"
-              value={taHandoffDate}
-              onChange={(e) => setTaHandoffDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <Label>TA closure date</Label>
-            <Input
-              type="date"
-              value={targetClosureDate}
-              onChange={(e) => setTargetClosureDate(e.target.value)}
-              required
-            />
-          </div>
-          <div className="sm:col-span-3">
-            <Button type="submit" disabled={update.isPending}>
-              Save assignment
-            </Button>
-          </div>
-        </form>
+      {r.closureStatus === 'OVERDUE' && (
+        <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          Closure warning: target closure date has passed and open positions
+          remain.
+        </div>
       )}
 
-      <div className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-        <Field label="Client" value={r.client?.name} />
-        <Field label="Job family" value={r.jobFamily?.name} />
-        <Field label="Priority" value={r.priorityCode} mono />
-        <Field label="Sales owner" value={r.salesOwner?.fullName} />
-        <Field label="TA owner" value={r.taOwner?.fullName ?? '—'} />
-        <Field
-          label="Total positions"
-          value={String(r.numberOfPositions)}
-        />
-        <Field
-          label="TA handoff date"
-          value={toDateInput(r.taHandoffDate) || '—'}
-        />
-        <Field
-          label="TA closure date"
-          value={toDateInput(r.targetClosureDate) || '—'}
-        />
-        <Field label="Location" value={r.jobLocation ?? '—'} />
-        <Field label="Experience" value={r.experience ?? '—'} />
+      <div className="mb-4 grid gap-3 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5 text-sm">
+        <Field label="Requirement Age" value={`${r.requirementAgeDays} days`} />
+        <Field label="Open Positions" value={String(r.openPositions)} />
+        <Field label="Closed Positions" value={String(r.closedPositions)} />
+        <Field label="TA Handoff SLA" value={r.taHandoffSlaRag} />
+        <Field label="Closure Status" value={r.closureStatus} />
       </div>
+
+      <div className="mb-4 flex gap-2 border-b border-border pb-2 text-sm">
+        {(['details', 'candidates', 'activity'] as const).map((t) => (
+          <button
+            key={t}
+            className={`rounded-md px-3 py-1.5 capitalize ${
+              tab === t ? 'bg-accent font-medium' : 'text-muted-foreground'
+            }`}
+            onClick={() => setTab(t)}
+            type="button"
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'details' && (
+        <>
+          {editing && masters.data ? (
+            <div className="mb-4">
+              <RequirementForm
+                key={r.updatedAt ?? r.id}
+                masters={masters.data}
+                defaultValues={formDefaults}
+                submitLabel="Save changes"
+                isPending={update.isPending}
+                showSalesOwner={canEditFull}
+                taFieldsOnly={user?.role === 'TA'}
+                onCancel={() => setEditing(false)}
+                onSubmit={(values) => update.mutate(values)}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <Section title="Core">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                  <Field label="Req Id" value={r.publicId} mono />
+                  <Field
+                    label="Requirement Date"
+                    value={toDateInput(r.requirementDate)}
+                  />
+                  <Field label="Client Name" value={r.client?.name ?? '—'} />
+                  <Field label="Role/Skill" value={r.roleSkill} />
+                  <Field label="Job Family" value={r.jobFamily?.name ?? '—'} />
+                  <Field
+                    label="Number Of Positions"
+                    value={String(r.numberOfPositions)}
+                  />
+                  <Field
+                    label="Sales Owner"
+                    value={r.salesOwner?.fullName ?? '—'}
+                  />
+                  <Field label="Priority" value={r.priorityCode} mono />
+                  <Field label="Requirement Status" value={r.status} mono />
+                </div>
+              </Section>
+              <Section title="Owners & Dates">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                  <Field label="TA Owner" value={r.taOwner?.fullName ?? '—'} />
+                  <Field
+                    label="TA Handoff Date"
+                    value={toDateInput(r.taHandoffDate) || '—'}
+                  />
+                  <Field
+                    label="Target Closure Date"
+                    value={toDateInput(r.targetClosureDate) || '—'}
+                  />
+                </div>
+              </Section>
+              <Section title="Commercials">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+                  <Field label="Experience" value={r.experience ?? '—'} />
+                  <Field label="Job Location" value={r.jobLocation ?? '—'} />
+                  <Field label="Min Budget" value={money(r.minBudget)} />
+                  <Field label="Max Budget" value={money(r.maxBudget)} />
+                  <Field
+                    label="Duration of Project (Months)"
+                    value={
+                      r.durationMonths != null ? String(r.durationMonths) : '—'
+                    }
+                  />
+                </div>
+              </Section>
+              <Section title="Remarks">
+                <p className="text-sm">{r.remarks || '—'}</p>
+              </Section>
+            </div>
+          )}
+        </>
+      )}
+
+      {tab === 'candidates' && (
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-medium">Candidates</h3>
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/candidates?requirementId=${r.id}`}>
+                Open candidates
+              </Link>
+            </Button>
+          </div>
+          {candidates.isLoading ? (
+            <Skeleton className="h-24" />
+          ) : !candidates.data?.items?.length ? (
+            <p className="text-sm text-muted-foreground">
+              No candidates linked yet.
+            </p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {candidates.data.items.map(
+                (c: {
+                  id: string;
+                  publicId: string;
+                  name: string;
+                  stageCode: string;
+                  selected: boolean;
+                }) => (
+                  <li
+                    key={c.id}
+                    className="flex items-center justify-between border-b border-border/60 py-2"
+                  >
+                    <Link
+                      className="text-primary hover:underline"
+                      to={`/candidates/${c.id}`}
+                    >
+                      {c.publicId} — {c.name}
+                    </Link>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {c.stageCode}
+                      {c.selected ? ' · SELECTED' : ''}
+                    </span>
+                  </li>
+                ),
+              )}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {tab === 'activity' && (
+        <div className="rounded-md border border-border bg-card p-4">
+          {user?.role !== 'ADMIN' ? (
+            <p className="text-sm text-muted-foreground">
+              Activity / audit history is available to Admin users.
+            </p>
+          ) : activity.isLoading ? (
+            <Skeleton className="h-24" />
+          ) : !activity.data?.items?.length ? (
+            <p className="text-sm text-muted-foreground">No audit entries.</p>
+          ) : (
+            <ul className="space-y-3 text-sm">
+              {activity.data.items.map((a) => (
+                <li key={a.id} className="border-b border-border/60 pb-2">
+                  <div className="font-medium">
+                    {a.action}{' '}
+                    <span className="text-muted-foreground">
+                      by {a.actor?.fullName ?? 'system'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {new Date(a.createdAt).toLocaleString()}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </PageFade>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-md border border-border bg-card p-4">
+      <h3 className="mb-3 text-sm font-semibold tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      {children}
+    </div>
   );
 }
 

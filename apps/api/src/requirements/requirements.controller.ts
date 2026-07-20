@@ -16,7 +16,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role } from '../prisma/client';
 import { RequirementsService } from './requirements.service';
 import {
   CreateRequirementDto,
@@ -36,7 +36,7 @@ import { RequirementsQueryDto } from '../common/swagger/query.dto';
 @ApiTags('Requirements')
 @ApiBearerAuth('bearer')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.SALES, Role.TA, Role.LEADERSHIP_READONLY)
+@Roles(Role.ADMIN, Role.SALES, Role.TA, Role.HR, Role.LEADERSHIP_READONLY)
 @Controller('requirements')
 export class RequirementsController {
   constructor(private readonly requirements: RequirementsService) {}
@@ -55,7 +55,7 @@ export class RequirementsController {
   @Get(':id')
   @ApiOperation({
     operationId: 'getRequirement',
-    summary: 'Requirement detail with derived SLA / open / closed',
+    summary: 'Requirement detail with derived SLA / open / closed / closureStatus',
   })
   @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
   @ApiOkResponse({ description: 'Requirement detail' })
@@ -73,16 +73,16 @@ export class RequirementsController {
   @ApiCreatedResponse({ description: 'Created requirement' })
   @ApiMutateErrors()
   create(@Body() dto: CreateRequirementDto, @CurrentUser() user: AuthUser) {
-    return this.requirements.create(dto, user.id);
+    return this.requirements.create(dto, user);
   }
 
   @Roles(Role.ADMIN, Role.SALES, Role.TA)
   @Patch(':id')
   @ApiOperation({
     operationId: 'updateRequirement',
-    summary: 'Update requirement (Sales/Admin; TA limited)',
+    summary: 'Update requirement (Sales/Admin; TA limited fields)',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
   @ApiOkResponse({ description: 'Updated requirement' })
   @ApiMutateErrors()
   update(
@@ -90,7 +90,7 @@ export class RequirementsController {
     @Body() dto: UpdateRequirementDto,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.requirements.update(id, dto, user.id);
+    return this.requirements.update(id, dto, user);
   }
 
   @Roles(Role.ADMIN, Role.SALES)
@@ -99,7 +99,7 @@ export class RequirementsController {
     operationId: 'setRequirementStatus',
     summary: 'Transition requirement status (Sales/Admin)',
   })
-  @ApiParam({ name: 'id' })
+  @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
   @ApiOkResponse({ description: 'Updated requirement' })
   @ApiMutateErrors()
   status(
@@ -107,6 +107,6 @@ export class RequirementsController {
     @Body() dto: RequirementStatusDto,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.requirements.setStatus(id, dto.status, user.id);
+    return this.requirements.setStatus(id, dto.status, user);
   }
 }

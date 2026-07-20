@@ -74,6 +74,7 @@ export function OnboardingPage() {
       qc.invalidateQueries({ queryKey: ['onboardings'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
       qc.invalidateQueries({ queryKey: ['requirements'] });
+      qc.invalidateQueries({ queryKey: ['requirement'] });
     },
   });
 
