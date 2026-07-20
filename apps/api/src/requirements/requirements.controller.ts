@@ -48,7 +48,7 @@ export class RequirementsController {
   })
   @ApiOkResponse({ description: 'Paginated requirements' })
   @ApiProtectedErrors()
-  list(@Query() query: RequirementsQueryDto) {
+  list(@Query() query: RequirementsQueryDto): Promise<any> {
     return this.requirements.list(query as Record<string, string>);
   }
 
@@ -60,7 +60,7 @@ export class RequirementsController {
   @ApiParam({ name: 'id', description: 'UUID or publicId (REQ-00001)' })
   @ApiOkResponse({ description: 'Requirement detail' })
   @ApiProtectedErrors()
-  get(@Param('id') id: string) {
+  get(@Param('id') id: string): Promise<any> {
     return this.requirements.get(id);
   }
 
@@ -72,7 +72,7 @@ export class RequirementsController {
   })
   @ApiCreatedResponse({ description: 'Created requirement' })
   @ApiMutateErrors()
-  create(@Body() dto: CreateRequirementDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateRequirementDto, @CurrentUser() user: AuthUser): Promise<any> {
     return this.requirements.create(dto, user);
   }
 
@@ -89,7 +89,7 @@ export class RequirementsController {
     @Param('id') id: string,
     @Body() dto: UpdateRequirementDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.requirements.update(id, dto, user);
   }
 
@@ -106,7 +106,7 @@ export class RequirementsController {
     @Param('id') id: string,
     @Body() dto: RequirementStatusDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.requirements.setStatus(id, dto.status, user);
   }
 }

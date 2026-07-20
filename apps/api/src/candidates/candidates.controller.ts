@@ -48,7 +48,7 @@ export class CandidatesController {
   })
   @ApiOkResponse({ description: 'Paginated candidates' })
   @ApiProtectedErrors()
-  list(@Query() query: CandidatesQueryDto) {
+  list(@Query() query: CandidatesQueryDto): Promise<any> {
     return this.candidates.list(query as Record<string, string>);
   }
 
@@ -60,7 +60,7 @@ export class CandidatesController {
   @ApiParam({ name: 'id', description: 'UUID or publicId' })
   @ApiOkResponse({ description: 'Candidate detail' })
   @ApiProtectedErrors()
-  get(@Param('id') id: string) {
+  get(@Param('id') id: string): Promise<any> {
     return this.candidates.get(id);
   }
 
@@ -72,7 +72,7 @@ export class CandidatesController {
   })
   @ApiCreatedResponse({ description: 'Created candidate' })
   @ApiMutateErrors()
-  create(@Body() dto: CreateCandidateDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateCandidateDto, @CurrentUser() user: AuthUser): Promise<any> {
     return this.candidates.create(dto, user.id);
   }
 
@@ -89,7 +89,7 @@ export class CandidatesController {
     @Param('id') id: string,
     @Body() dto: UpdateCandidateDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.candidates.update(id, dto, user.id);
   }
 
@@ -106,7 +106,7 @@ export class CandidatesController {
     @Param('id') id: string,
     @Body() dto: SelectCandidateDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.candidates.select(id, dto.selected, user.id);
   }
 }

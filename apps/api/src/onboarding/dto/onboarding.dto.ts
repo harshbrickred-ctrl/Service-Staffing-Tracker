@@ -35,6 +35,11 @@ export class CreateOnboardingDto {
   @IsDateString()
   expectedDoj?: string;
 
+  @ApiPropertyOptional({ example: '2026-08-15' })
+  @IsOptional()
+  @IsDateString()
+  offerAcceptedDate?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -76,6 +81,11 @@ export class UpdateOnboardingDto {
   @IsOptional()
   @IsDateString()
   actualDoj?: string | null;
+
+  @ApiPropertyOptional({ example: '2026-08-15' })
+  @IsOptional()
+  @IsDateString()
+  offerAcceptedDate?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

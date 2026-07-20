@@ -38,13 +38,30 @@ export class OffersService {
           }
         : {}),
     };
-    const [items, total] = await Promise.all([
+    const [records, total] = await Promise.all([
       this.prisma.offer.findMany({
         where,
         include: {
-          candidate: { select: { id: true, publicId: true, name: true } },
+          candidate: {
+            select: {
+              id: true,
+              publicId: true,
+              name: true,
+              email: true,
+              mobile: true,
+              source: true,
+              stageCode: true,
+            },
+          },
           requirement: {
-            select: { id: true, publicId: true, roleSkill: true },
+            select: {
+              id: true,
+              publicId: true,
+              roleSkill: true,
+              client: {
+                select: { name: true },
+              },
+            },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -53,10 +70,11 @@ export class OffersService {
       }),
       this.prisma.offer.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+
+    return { items: records, total, page, pageSize };
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<any> {
     const row = await this.prisma.offer.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -99,7 +117,18 @@ export class OffersService {
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true } },
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            email: true,
+            mobile: true,
+            source: true,
+            stageCode: true,
+            selected: true,
+          },
+        },
         requirement: {
           select: { id: true, publicId: true, roleSkill: true },
         },
@@ -145,7 +174,18 @@ export class OffersService {
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true } },
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            email: true,
+            mobile: true,
+            source: true,
+            stageCode: true,
+            selected: true,
+          },
+        },
         requirement: {
           select: { id: true, publicId: true, roleSkill: true },
         },
@@ -171,7 +211,18 @@ export class OffersService {
       where: { id },
       data: { statusCode },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true } },
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            email: true,
+            mobile: true,
+            source: true,
+            stageCode: true,
+            selected: true,
+          },
+        },
         requirement: {
           select: { id: true, publicId: true, roleSkill: true },
         },
