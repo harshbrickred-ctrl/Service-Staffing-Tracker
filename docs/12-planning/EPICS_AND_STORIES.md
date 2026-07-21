@@ -136,4 +136,5 @@ flowchart LR
 ## References
 
 - [SPRINT_AND_MILESTONES.md](./SPRINT_AND_MILESTONES.md)  
+- [TEAM_SPRINT_PLAN.md](./TEAM_SPRINT_PLAN.md)  
 - [../03-prd/PRD.md](../03-prd/PRD.md)  

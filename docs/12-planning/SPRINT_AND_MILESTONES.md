@@ -43,7 +43,15 @@ MVP (~8 sprints @ 1–2 weeks assuming solo/pair). Adjust capacity freely.
 
 Solo developer: prefer vertical slices each sprint (API+UI for one story).
 
+## Team assignment
+
+Named module owners, per-person step backlog, and sprint-by-sprint board: [TEAM_SPRINT_PLAN.md](./TEAM_SPRINT_PLAN.md).
+
+**Excel tracker:** [SST_Sprint_Planning_Tracker.xlsx](./SST_Sprint_Planning_Tracker.xlsx) — live status tracking, KPIs, and manager demo checklist.
+
 ## References
 
+- [TEAM_SPRINT_PLAN.md](./TEAM_SPRINT_PLAN.md)  
+- [SST_Sprint_Planning_Tracker.xlsx](./SST_Sprint_Planning_Tracker.xlsx)  
 - [DEPENDENCY_GRAPH.md](./DEPENDENCY_GRAPH.md)  
 - [EPICS_AND_STORIES.md](./EPICS_AND_STORIES.md)  

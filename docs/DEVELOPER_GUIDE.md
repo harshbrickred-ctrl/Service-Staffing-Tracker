@@ -6,7 +6,9 @@ Day-1 handbook for engineers implementing SST from scratch using only the `docs/
 
 ## Audience
 
-Backend, frontend, full-stack, and platform engineers. Assumed familiarity with TypeScript, React, NestJS, PostgreSQL, and Docker.
+Backend, frontend, full-stack, and platform engineers.
+
+**New to Node.js or NestJS?** Start with the one-stop implementation handbook: [21-guides/NESTJS_DEVELOPER_HANDBOOK.md](./21-guides/NESTJS_DEVELOPER_HANDBOOK.md).
 
 ## Scope
 
@@ -14,7 +16,7 @@ Backend, frontend, full-stack, and platform engineers. Assumed familiarity with 
 |----------|--------------|
 | MVP build path (hiring pipeline) | Implementing Future workforce modules |
 | Local Docker-first development | Production cloud deploy (see `19-cloud`) |
-| How docs map to code | Running product code (docs-only repo today) |
+| How docs map to code | — |
 
 ## Definitions
 
@@ -58,7 +60,7 @@ Requirement Intake → TA Candidate Pipeline → Offer & Selection → HR Onboar
 | 3 | Database + Prisma design | `07` |
 | 4 | API catalog + Auth/RBAC | `10`, `11` |
 | 5 | Scaffold monorepo per `13-monorepo`; local Compose per `17` | `13`, `17` |
-| 6–7 | Implement Auth + Master Data + Requirements (Milestone 1) | `12-planning` |
+| 6–7 | Implement Auth + Master Data + Requirements (Milestone 1) | `12-planning` ([TEAM_SPRINT_PLAN.md](./12-planning/TEAM_SPRINT_PLAN.md)) |
 
 ---
 
@@ -187,5 +189,6 @@ Standards: [14-standards/CODING_STANDARDS.md](./14-standards/CODING_STANDARDS.md
 ## References
 
 - [docs/README.md](./README.md)
+- [21-guides/NESTJS_DEVELOPER_HANDBOOK.md](./21-guides/NESTJS_DEVELOPER_HANDBOOK.md) — **NestJS + full-stack implementation guide**
 - ADR-0001: [14-standards/adr/0001-mvp-pipeline-first.md](./14-standards/adr/0001-mvp-pipeline-first.md)
 - ADR-0002: [14-standards/adr/0002-modular-monolith.md](./14-standards/adr/0002-modular-monolith.md)

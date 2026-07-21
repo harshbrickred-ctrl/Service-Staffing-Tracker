@@ -2,30 +2,47 @@ import { Injectable } from '@nestjs/common';
 import {
   computeClosureStatus,
   computeTaHandoffSlaRag,
+  daysBetween,
 } from '@sst/shared-utils';
+import { Prisma } from '../prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { DashboardQueryDto } from '../common/swagger/query.dto';
+
+const percentage = (count: number, total: number) =>
+  total > 0 ? Math.round((count / total) * 10_000) / 10_000 : 0;
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async summary(query: Record<string, string | undefined>) {
-    const reqWhere = {
-      deletedAt: null as null,
+  private requirementWhere(
+    query: DashboardQueryDto,
+  ): Prisma.RequirementWhereInput {
+    return {
+      deletedAt: null,
       ...(query.taOwnerId ? { taOwnerId: query.taOwnerId } : {}),
       ...(query.salesOwnerId ? { salesOwnerId: query.salesOwnerId } : {}),
       ...(query.clientId ? { clientId: query.clientId } : {}),
+      ...(query.jobFamilyId ? { jobFamilyId: query.jobFamilyId } : {}),
       ...(query.priorityCode ? { priorityCode: query.priorityCode } : {}),
+      ...(query.from || query.to
+        ? {
+            requirementDate: {
+              ...(query.from ? { gte: new Date(query.from) } : {}),
+              ...(query.to ? { lte: new Date(query.to) } : {}),
+            },
+          }
+        : {}),
     };
+  }
 
+  async summary(query: DashboardQueryDto) {
     const requirements = await this.prisma.requirement.findMany({
-      where: reqWhere,
+      where: this.requirementWhere(query),
       select: {
         id: true,
         numberOfPositions: true,
         taHandoffDate: true,
-        salesOwnerId: true,
-        taOwnerId: true,
         status: true,
         targetClosureDate: true,
         requirementDate: true,
@@ -54,6 +71,11 @@ export class DashboardService {
         offersAccepted: 0,
         candidatesJoined: 0,
         fillRate: 0,
+        averageDaysToFill: null,
+        requirementsAtRisk: 0,
+        cancelledRequirements: 0,
+        wastedSourcing: 0,
+        overdueRequirements: 0,
       };
     }
 
@@ -62,13 +84,13 @@ export class DashboardService {
       selectedCandidates,
       offersReleased,
       offersAccepted,
-      candidatesJoined,
       duplicateMobileGroups,
+      joinedOnboardings,
+      sourcedRequirementGroups,
     ] = await Promise.all([
       this.prisma.candidate.count({
         where: {
           deletedAt: null,
-          selected: false,
           requirementId: { in: reqIds },
         },
       }),
@@ -93,27 +115,86 @@ export class DashboardService {
           requirementId: { in: reqIds },
         },
       }),
-      this.prisma.onboarding.count({
+      this.prisma.candidate.groupBy({
+        by: ['mobileNormalized'],
+        where: {
+          deletedAt: null,
+          requirementId: { in: reqIds },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.onboarding.findMany({
         where: {
           deletedAt: null,
           statusCode: 'JOINED',
           requirementId: { in: reqIds },
         },
+        select: { requirementId: true, actualDoj: true },
       }),
-      this.prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(*)::bigint as count FROM (
-          SELECT mobile_normalized FROM candidates
-          WHERE deleted_at IS NULL
-          GROUP BY mobile_normalized
-          HAVING COUNT(*) > 1
-        ) t
-      `,
+      this.prisma.candidate.groupBy({
+        by: ['requirementId'],
+        where: { deletedAt: null, requirementId: { in: reqIds } },
+        _count: { _all: true },
+      }),
     ]);
 
+    const candidatesJoined = joinedOnboardings.length;
     const closedPositions = candidatesJoined;
     const openPositions = Math.max(0, totalPositions - closedPositions);
     const fillRate =
       totalPositions > 0 ? closedPositions / totalPositions : 0;
+    const requirementById = new Map(requirements.map((r) => [r.id, r]));
+    const fillDurations = joinedOnboardings
+      .map((onboarding) => {
+        const requirement = requirementById.get(onboarding.requirementId);
+        return requirement && onboarding.actualDoj
+          ? daysBetween(requirement.requirementDate, onboarding.actualDoj)
+          : -1;
+      })
+      .filter((days) => days >= 0);
+    const averageDaysToFill = fillDurations.length
+      ? Math.round(
+          (fillDurations.reduce((sum, days) => sum + days, 0) /
+            fillDurations.length) *
+            10,
+        ) / 10
+      : null;
+    const sourcedRequirementIds = new Set(
+      sourcedRequirementGroups.map((group) => group.requirementId),
+    );
+    const joinedByRequirement = new Map<string, number>();
+    for (const onboarding of joinedOnboardings) {
+      joinedByRequirement.set(
+        onboarding.requirementId,
+        (joinedByRequirement.get(onboarding.requirementId) ?? 0) + 1,
+      );
+    }
+
+    let requirementsAtRisk = 0;
+    let overdueRequirements = 0;
+    for (const requirement of requirements) {
+      const rag = computeTaHandoffSlaRag({
+        requirementDate: requirement.requirementDate,
+        taHandoffDate: requirement.taHandoffDate,
+        targetClosureDate: requirement.targetClosureDate,
+        status: requirement.status,
+      });
+      if (rag === 'RED') requirementsAtRisk += 1;
+
+      const closure = computeClosureStatus({
+        status: requirement.status,
+        openPositions: Math.max(
+          0,
+          requirement.numberOfPositions -
+            (joinedByRequirement.get(requirement.id) ?? 0),
+        ),
+        targetClosureDate: requirement.targetClosureDate,
+      });
+      if (closure === 'OVERDUE') overdueRequirements += 1;
+    }
+    const cancelled = requirements.filter(
+      (requirement) => requirement.status === 'CANCELLED',
+    );
 
     return {
       totalRequirements: requirements.length,
@@ -123,33 +204,59 @@ export class DashboardService {
       pendingSalesHandoff,
       candidatesInPipeline,
       selectedCandidates,
-      duplicateMobiles: Number(duplicateMobileGroups[0]?.count ?? 0),
+      duplicateMobiles: duplicateMobileGroups.filter(
+        (group) => group._count._all > 1,
+      ).length,
       offersReleased,
       offersAccepted,
       candidatesJoined,
       fillRate: Math.round(fillRate * 10000) / 10000,
+      averageDaysToFill,
+      requirementsAtRisk,
+      cancelledRequirements: cancelled.length,
+      wastedSourcing: cancelled.filter(
+        (requirement) =>
+          requirement.taHandoffDate != null ||
+          sourcedRequirementIds.has(requirement.id),
+      ).length,
+      overdueRequirements,
     };
   }
 
-  async breakdowns(query: Record<string, string | undefined>) {
-    const reqWhere = {
-      deletedAt: null as null,
-      ...(query.taOwnerId ? { taOwnerId: query.taOwnerId } : {}),
-      ...(query.salesOwnerId ? { salesOwnerId: query.salesOwnerId } : {}),
-      ...(query.clientId ? { clientId: query.clientId } : {}),
-    };
+  async breakdowns(query: DashboardQueryDto) {
     const requirements = await this.prisma.requirement.findMany({
-      where: reqWhere,
+      where: this.requirementWhere(query),
     });
     const reqIds = requirements.map((r) => r.id);
 
-    const stageGroups = reqIds.length
-      ? await this.prisma.candidate.groupBy({
-          by: ['stageCode'],
-          where: { deletedAt: null, requirementId: { in: reqIds } },
-          _count: { _all: true },
-        })
-      : [];
+    const [stageGroups, stageLookups, joinedGroups] = await Promise.all([
+      reqIds.length
+        ? this.prisma.candidate.groupBy({
+            by: ['stageCode'],
+            where: { deletedAt: null, requirementId: { in: reqIds } },
+            _count: { _all: true },
+          })
+        : [],
+      this.prisma.lookupValue.findMany({
+        where: {
+          lookupType: { code: 'CANDIDATE_STAGE' },
+          isActive: true,
+        },
+        select: { code: true, label: true },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      reqIds.length
+        ? this.prisma.onboarding.groupBy({
+            by: ['requirementId'],
+            where: {
+              requirementId: { in: reqIds },
+              statusCode: 'JOINED',
+              deletedAt: null,
+            },
+            _count: { _all: true },
+          })
+        : [],
+    ]);
 
     const ragCounts = { GREEN: 0, AMBER: 0, RED: 0, NONE: 0 };
     const closureCounts = {
@@ -160,17 +267,6 @@ export class DashboardService {
       ON_HOLD: 0,
     };
 
-    const joinedGroups = reqIds.length
-      ? await this.prisma.onboarding.groupBy({
-          by: ['requirementId'],
-          where: {
-            requirementId: { in: reqIds },
-            statusCode: 'JOINED',
-            deletedAt: null,
-          },
-          _count: { _all: true },
-        })
-      : [];
     const closedMap = new Map(
       joinedGroups.map((g) => [g.requirementId, g._count._all]),
     );
@@ -194,32 +290,63 @@ export class DashboardService {
       closureCounts[closure] += 1;
     }
 
+    const stageCountMap = new Map(
+      stageGroups.map((group) => [group.stageCode, group._count._all]),
+    );
+    const stageTotal = stageGroups.reduce(
+      (total, group) => total + group._count._all,
+      0,
+    );
+    const knownStageCodes = new Set(stageLookups.map((stage) => stage.code));
+    const byStage = [
+      ...stageLookups.map((stage) => {
+        const count = stageCountMap.get(stage.code) ?? 0;
+        return {
+          stageCode: stage.code,
+          label: stage.label,
+          count,
+          percentage: percentage(count, stageTotal),
+        };
+      }),
+      ...stageGroups
+        .filter((group) => !knownStageCodes.has(group.stageCode))
+        .map((group) => ({
+          stageCode: group.stageCode,
+          label: group.stageCode,
+          count: group._count._all,
+          percentage: percentage(group._count._all, stageTotal),
+        })),
+    ];
+
     return {
-      byStage: stageGroups.map((g) => ({
-        stageCode: g.stageCode,
-        count: g._count._all,
-      })),
+      byStage,
       byRag: Object.entries(ragCounts).map(([rag, count]) => ({
         rag,
         count,
+        percentage: percentage(count, requirements.length),
       })),
       byClosureStatus: Object.entries(closureCounts).map(
         ([closureStatus, count]) => ({
           closureStatus,
           count,
+          percentage: percentage(count, requirements.length),
         }),
       ),
     };
   }
 
-  async escalations(query: Record<string, string | undefined>) {
+  async escalations(query: DashboardQueryDto) {
     const requirements = await this.prisma.requirement.findMany({
-      where: {
-        deletedAt: null,
-        ...(query.taOwnerId ? { taOwnerId: query.taOwnerId } : {}),
-        ...(query.salesOwnerId ? { salesOwnerId: query.salesOwnerId } : {}),
+      where: this.requirementWhere(query),
+      include: {
+        client: true,
+        candidates: {
+          where: { deletedAt: null },
+          select: { id: true },
+          take: 1,
+        },
       },
-      include: { client: true, candidates: { where: { deletedAt: null }, take: 1 } },
+      orderBy: { requirementDate: 'asc' },
     });
 
     const joinedGroups = requirements.length
@@ -237,9 +364,9 @@ export class DashboardService {
       joinedGroups.map((g) => [g.requirementId, g._count._all]),
     );
 
-    const atRisk = [];
-    const overdue = [];
-    const closureOverdue = [];
+    const atRisk: typeof requirements = [];
+    const overdue: typeof requirements = [];
+    const closureOverdue: typeof requirements = [];
     for (const r of requirements) {
       const rag = computeTaHandoffSlaRag({
         requirementDate: r.requirementDate,
@@ -264,38 +391,25 @@ export class DashboardService {
     const wasted = cancelled.filter(
       (r) => r.taHandoffDate != null || r.candidates.length > 0,
     );
+    const toItem = (r: (typeof requirements)[number]) => ({
+      id: r.id,
+      publicId: r.publicId,
+      roleSkill: r.roleSkill,
+      client: r.client.name,
+      requirementDate: r.requirementDate,
+      targetClosureDate: r.targetClosureDate,
+      openPositions: Math.max(
+        0,
+        r.numberOfPositions - (closedMap.get(r.id) ?? 0),
+      ),
+    });
 
     return {
-      atRisk: atRisk.map((r) => ({
-        id: r.id,
-        publicId: r.publicId,
-        roleSkill: r.roleSkill,
-        client: r.client.name,
-      })),
-      overdue: overdue.map((r) => ({
-        id: r.id,
-        publicId: r.publicId,
-        roleSkill: r.roleSkill,
-        client: r.client.name,
-      })),
-      closureOverdue: closureOverdue.map((r) => ({
-        id: r.id,
-        publicId: r.publicId,
-        roleSkill: r.roleSkill,
-        client: r.client.name,
-      })),
-      cancelled: cancelled.map((r) => ({
-        id: r.id,
-        publicId: r.publicId,
-        roleSkill: r.roleSkill,
-        client: r.client.name,
-      })),
-      wasted: wasted.map((r) => ({
-        id: r.id,
-        publicId: r.publicId,
-        roleSkill: r.roleSkill,
-        client: r.client.name,
-      })),
+      atRisk: atRisk.map(toItem),
+      overdue: overdue.map(toItem),
+      closureOverdue: closureOverdue.map(toItem),
+      cancelled: cancelled.map(toItem),
+      wasted: wasted.map(toItem),
     };
   }
 }
