@@ -35,7 +35,7 @@ export class MasterDataService {
     private readonly audit: AuditService,
   ) {}
 
-  listLookups(typeCode: string) {
+  listLookups(typeCode: string): Promise<any> {
     return this.prisma.lookupValue.findMany({
       where: {
         isActive: true,
@@ -101,7 +101,7 @@ export class MasterDataService {
     return value;
   }
 
-  listClients() {
+  listClients(): Promise<any> {
     return this.prisma.client.findMany({
       where: { deletedAt: null },
       orderBy: { name: 'asc' },
@@ -152,7 +152,7 @@ export class MasterDataService {
     return client;
   }
 
-  listJobFamilies() {
+  listJobFamilies(): Promise<any> {
     return this.prisma.jobFamily.findMany({
       where: { deletedAt: null },
       orderBy: { name: 'asc' },
@@ -196,7 +196,7 @@ export class MasterDataService {
     return row;
   }
 
-  listMembers(role: Role) {
+  listMembers(role: Role): Promise<any> {
     return this.prisma.user.findMany({
       where: {
         deletedAt: null,
@@ -208,7 +208,7 @@ export class MasterDataService {
     });
   }
 
-  async createMember(role: Role, dto: CreateMemberDto, actorId: string) {
+  async createMember(role: Role, dto: CreateMemberDto, actorId: string): Promise<any> {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing && !existing.deletedAt) {

@@ -9,6 +9,7 @@ Complete enterprise documentation for building **Service Staffing Tracker (SST)*
 | Audience | Start here |
 |----------|------------|
 | New engineers | [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) |
+| New to Node.js / NestJS | [21-guides/NESTJS_DEVELOPER_HANDBOOK.md](./21-guides/NESTJS_DEVELOPER_HANDBOOK.md) |
 | Product / BA | [00-initiation/VISION.md](./00-initiation/VISION.md) |
 | Architects | [06-system-design/HIGH_LEVEL_ARCHITECTURE.md](./06-system-design/HIGH_LEVEL_ARCHITECTURE.md) |
 | Security | [11-security/AUTH_RBAC.md](./11-security/AUTH_RBAC.md) |
@@ -32,7 +33,7 @@ Complete enterprise documentation for building **Service Staffing Tracker (SST)*
 4. [06-system-design](./06-system-design/) → [07-database](./07-database/) → [08-backend](./08-backend/) → [09-frontend](./09-frontend/) → [10-api](./10-api/) → [11-security](./11-security/)  
 5. [12-planning](./12-planning/) → [13-monorepo](./13-monorepo/) → [14-standards](./14-standards/)  
 6. [15-testing](./15-testing/) → [16-cicd](./16-cicd/) → [17-local-deployment](./17-local-deployment/) → [18-monitoring](./18-monitoring/)  
-7. [19-cloud](./19-cloud/) → [20-maintenance](./20-maintenance/) → [21-guides](./21-guides/)  
+7. [19-cloud](./19-cloud/) → [20-maintenance](./20-maintenance/) → [21-guides](./21-guides/) (includes [NestJS handbook](./21-guides/NESTJS_DEVELOPER_HANDBOOK.md))  
 
 ## Document catalog
 
@@ -50,7 +51,7 @@ Complete enterprise documentation for building **Service Staffing Tracker (SST)*
 | `09-frontend` | React architecture, features, auth/routing, state |
 | `10-api` | Endpoint catalog, OpenAPI, errors/pagination |
 | `11-security` | Auth/RBAC, permissions, OWASP, audit |
-| `12-planning` | Epics/stories, sprints, dependencies |
+| `12-planning` | Epics/stories, sprints, team sprint plan, Excel tracker, dependencies |
 | `13-monorepo` | Turborepo layout, packages, env/versioning |
 | `14-standards` | Coding, git/PR, ADRs |
 | `15-testing` | Strategy, structure, coverage |
@@ -59,7 +60,7 @@ Complete enterprise documentation for building **Service Staffing Tracker (SST)*
 | `18-monitoring` | Observability, metrics/alerts |
 | `19-cloud` | Cloud migration plan (future) |
 | `20-maintenance` | Support, DR, incident |
-| `21-guides` | Admin, user manual, FAQ |
+| `21-guides` | Admin, user manual, FAQ, **NestJS developer handbook** |
 
 ## Definitions
 

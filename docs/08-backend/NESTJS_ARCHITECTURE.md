@@ -101,7 +101,16 @@ SwaggerModule.setup('api/docs', app, document);
 
 CQRS not required for MVP; dashboard can live as dedicated query service.
 
+## Implementation companion
+
+For a beginner-friendly, codebase-driven walkthrough (actual file layout, Prisma patterns, auth, and full-stack feature recipes), see:
+
+- [../21-guides/NESTJS_DEVELOPER_HANDBOOK.md](../21-guides/NESTJS_DEVELOPER_HANDBOOK.md)
+
+**Note:** The folder structure below is aspirational. The current codebase uses flat feature folders directly under `apps/api/src/` (e.g. `requirements/`, `candidates/`). See the handbook for the real layout.
+
 ## References
 
+- [../21-guides/NESTJS_DEVELOPER_HANDBOOK.md](../21-guides/NESTJS_DEVELOPER_HANDBOOK.md)  
 - [MODULE_CATALOG.md](./MODULE_CATALOG.md)  
 - [CROSS_CUTTING.md](./CROSS_CUTTING.md)  

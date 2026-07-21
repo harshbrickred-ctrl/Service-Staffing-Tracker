@@ -23,7 +23,51 @@ export class OnboardingService {
     private readonly requirements: RequirementsService,
   ) {}
 
-  async list(query: Record<string, string | undefined>) {
+  private mapOnboardingRow(row: any): any {
+    const offerInitiatedDate = row.offer?.offerInitiatedDate ?? null;
+    const offerReleasedDate = row.offer?.offerReleasedDate ?? null;
+    const offerStatus = row.offer?.statusCode ?? null;
+    const ctcRate = row.offer?.ctcRate ?? null;
+    const offerAcceptedDate = row.offerAcceptedDate ?? null;
+    const onboardingTATDays =
+      offerReleasedDate && offerAcceptedDate
+        ? Math.max(
+            0,
+            Math.round(
+              (offerAcceptedDate.getTime() - offerReleasedDate.getTime()) /
+                (1000 * 60 * 60 * 24),
+            ),
+          )
+        : null;
+
+    return {
+      ...row,
+      onboardingId: row.publicId,
+      candidateId: row.candidate?.id,
+      candidateCode: row.candidate?.publicId,
+      reqId: row.requirement?.publicId,
+      candidateName: row.candidate?.name,
+      mobileNumber: row.candidate?.mobile,
+      emailAddress: row.candidate?.email,
+      clientRole: row.requirement?.roleSkill,
+      offerInitiatedDate,
+      offerReleasedDate,
+      offerStatus,
+      ctcRate,
+      hrOwnerName: row.hrOwner?.fullName ?? null,
+      offerAcceptedDate,
+      expectedDOJ: row.expectedDoj,
+      pendingDocs: row.docsPending,
+      bgvStatus: row.bgvStatusCode,
+      joiningFormalities: row.joiningFormalities,
+      actualDOJ: row.actualDoj,
+      onboardingStatus: row.statusCode,
+      onboardingTATDays,
+      remarks: row.remarks,
+    };
+  }
+
+  async list(query: Record<string, string | undefined>): Promise<any> {
     const page = Number(query.page ?? 1);
     const pageSize = Number(query.pageSize ?? 20);
     const where: Prisma.OnboardingWhereInput = {
@@ -35,8 +79,17 @@ export class OnboardingService {
       this.prisma.onboarding.findMany({
         where,
         include: {
-          candidate: { select: { id: true, publicId: true, name: true } },
-          offer: { select: { id: true, publicId: true, statusCode: true } },
+          candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+          offer: {
+            select: {
+              id: true,
+              publicId: true,
+              statusCode: true,
+              offerInitiatedDate: true,
+              offerReleasedDate: true,
+              ctcRate: true,
+            },
+          },
           hrOwner: { select: { id: true, fullName: true, email: true } },
           requirement: {
             select: { id: true, publicId: true, roleSkill: true },
@@ -48,10 +101,10 @@ export class OnboardingService {
       }),
       this.prisma.onboarding.count({ where }),
     ]);
-    return { items, total, page, pageSize };
+    return { items: items.map((row) => this.mapOnboardingRow(row)), total, page, pageSize };
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<any> {
     const row = await this.prisma.onboarding.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -62,10 +115,10 @@ export class OnboardingService {
       },
     });
     if (!row) throw new NotFoundException('Onboarding not found');
-    return row;
+    return this.mapOnboardingRow(row);
   }
 
-  async create(dto: CreateOnboardingDto, actorId: string) {
+  async create(dto: CreateOnboardingDto, actorId: string): Promise<any> {
     const offer = await this.prisma.offer.findFirst({
       where: { id: dto.offerId, deletedAt: null },
       include: { onboarding: true },
@@ -117,13 +170,26 @@ export class OnboardingService {
         expectedDoj: dto.expectedDoj
           ? new Date(dto.expectedDoj)
           : offer.expectedDoj,
+        offerAcceptedDate: dto.offerAcceptedDate
+          ? new Date(dto.offerAcceptedDate)
+          : undefined,
         statusCode: dto.statusCode ?? 'IN_PROGRESS',
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true } },
-        offer: { select: { id: true, publicId: true, statusCode: true } },
+        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+        offer: {
+          select: {
+            id: true,
+            publicId: true,
+            statusCode: true,
+            offerInitiatedDate: true,
+            offerReleasedDate: true,
+            ctcRate: true,
+          },
+        },
         hrOwner: { select: { id: true, fullName: true, email: true } },
+        requirement: { select: { id: true, publicId: true, roleSkill: true } },
       },
     });
     await this.audit.log({
@@ -133,10 +199,10 @@ export class OnboardingService {
       actorUserId: actorId,
       after: row,
     });
-    return row;
+    return this.mapOnboardingRow(row);
   }
 
-  async update(id: string, dto: UpdateOnboardingDto, actorId: string) {
+  async update(id: string, dto: UpdateOnboardingDto, actorId: string): Promise<any> {
     const before = await this.prisma.onboarding.findFirst({
       where: { id, deletedAt: null },
     });
@@ -154,6 +220,12 @@ export class OnboardingService {
             : dto.expectedDoj
               ? new Date(dto.expectedDoj)
               : null,
+        offerAcceptedDate:
+          dto.offerAcceptedDate === undefined
+            ? undefined
+            : dto.offerAcceptedDate
+              ? new Date(dto.offerAcceptedDate)
+              : null,
         actualDoj:
           dto.actualDoj === undefined
             ? undefined
@@ -163,8 +235,19 @@ export class OnboardingService {
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true } },
+        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+        offer: {
+          select: {
+            id: true,
+            publicId: true,
+            statusCode: true,
+            offerInitiatedDate: true,
+            offerReleasedDate: true,
+            ctcRate: true,
+          },
+        },
         hrOwner: { select: { id: true, fullName: true, email: true } },
+        requirement: { select: { id: true, publicId: true, roleSkill: true } },
       },
     });
     await this.audit.log({
@@ -175,7 +258,7 @@ export class OnboardingService {
       before,
       after: row,
     });
-    return row;
+    return this.mapOnboardingRow(row);
   }
 
   async setStatus(
@@ -183,7 +266,7 @@ export class OnboardingService {
     statusCode: string,
     actorId: string,
     actualDoj?: string,
-  ) {
+  ): Promise<any> {
     const before = await this.prisma.onboarding.findFirst({
       where: { id, deletedAt: null },
     });
@@ -223,8 +306,19 @@ export class OnboardingService {
           docsPending: statusCode === 'JOINED' ? false : before.docsPending,
         },
         include: {
-          candidate: { select: { id: true, publicId: true, name: true } },
+          candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+          offer: {
+            select: {
+              id: true,
+              publicId: true,
+              statusCode: true,
+              offerInitiatedDate: true,
+              offerReleasedDate: true,
+              ctcRate: true,
+            },
+          },
           hrOwner: { select: { id: true, fullName: true, email: true } },
+          requirement: { select: { id: true, publicId: true, roleSkill: true } },
         },
       });
 
@@ -254,6 +348,6 @@ export class OnboardingService {
       return updated;
     });
 
-    return row;
+    return this.mapOnboardingRow(row);
   }
 }

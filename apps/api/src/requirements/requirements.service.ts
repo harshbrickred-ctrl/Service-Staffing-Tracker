@@ -208,7 +208,7 @@ export class RequirementsService {
     }
   }
 
-  async list(query: Record<string, string | undefined>) {
+  async list(query: Record<string, string | undefined>): Promise<any> {
     const page = Math.max(1, Number(query.page ?? 1) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(query.pageSize ?? 25) || 25));
     const where: Prisma.RequirementWhereInput = {
@@ -288,13 +288,13 @@ export class RequirementsService {
     return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<any> {
     const row = await this.findRequirementOrThrow(id);
     const counts = await this.closedCounts([row.id]);
     return this.withDerived(row, counts.get(row.id) ?? 0);
   }
 
-  async create(dto: CreateRequirementDto, actor: AuthUser) {
+  async create(dto: CreateRequirementDto, actor: AuthUser): Promise<any> {
     await this.assertActiveClient(dto.clientId);
     await this.assertActiveJobFamily(dto.jobFamilyId);
     await this.assertPriorityCode(dto.priorityCode);
@@ -359,7 +359,7 @@ export class RequirementsService {
   }
 
   /** Full-body edit after creation (Sales/Admin). Sales cannot reassign owner. */
-  async replace(id: string, dto: CreateRequirementDto, actor: AuthUser) {
+  async replace(id: string, dto: CreateRequirementDto, actor: AuthUser) : Promise<RequirementRow & Record<string, unknown>>{
     const before = await this.findRequirementOrThrow(id);
     if (actor.role === Role.SALES && before.salesOwnerId !== actor.id) {
       throw new ForbiddenException(
@@ -390,7 +390,7 @@ export class RequirementsService {
     return this.update(id, payload, actor);
   }
 
-  async update(id: string, dto: UpdateRequirementDto, actor: AuthUser) {
+  async update(id: string, dto: UpdateRequirementDto, actor: AuthUser): Promise<RequirementRow & Record<string, unknown>>  {
     const before = await this.findRequirementOrThrow(id);
 
     let payload = dto;
@@ -518,7 +518,7 @@ export class RequirementsService {
     return this.withDerived(row, counts.get(row.id) ?? 0);
   }
 
-  async setStatus(id: string, status: RequirementStatus, actor: AuthUser) {
+  async setStatus(id: string, status: RequirementStatus, actor: AuthUser): Promise<any> {
     const before = await this.findRequirementOrThrow(id);
     this.assertStatusTransition(before.status, status);
 
@@ -562,7 +562,7 @@ export class RequirementsService {
     requirementId: string,
     actorId: string | null,
     tx?: Prisma.TransactionClient,
-  ) {
+  ): Promise<any> {
     const client = tx ?? this.prisma;
     const req = await client.requirement.findFirst({
       where: { id: requirementId, deletedAt: null },

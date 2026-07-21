@@ -8,37 +8,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  SALES
-  TA
-  HR
-  LEADERSHIP_READONLY
-}
-
-enum RequirementStatus {
-  ACTIVE
-  ON_HOLD
-  CANCELLED
-  CLOSED
-}
-
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  fullName     String    @map("full_name")
-  role         Role
-  isActive     Boolean   @default(true) @map("is_active")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  refreshTokens      RefreshToken[]
-  auditLogs          AuditLog[]      @relation("ActorAudits")
-  salesRequirements  Requirement[]   @relation("SalesOwner")
-  taRequirements     Requirement[]   @relation("TaOwner")
-  hrOnboardings      Onboarding[]     @relation("HrOwner")
+  id                String         @id @default(uuid())
+  email             String         @unique
+  passwordHash      String         @map("password_hash")
+  fullName          String         @map("full_name")
+  role              Role
+  isActive          Boolean        @default(true) @map("is_active")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  updatedAt         DateTime       @updatedAt @map("updated_at")
+  deletedAt         DateTime?      @map("deleted_at")
+  auditLogs         AuditLog[]     @relation("ActorAudits")
+  hrOnboardings     Onboarding[]   @relation("HrOwner")
+  refreshTokens     RefreshToken[]
+  salesRequirements Requirement[]  @relation("SalesOwner")
+  taRequirements    Requirement[]  @relation("TaOwner")
 
   @@map("users")
 }
@@ -80,10 +64,10 @@ model JobFamily {
 }
 
 model LookupType {
-  id        String         @id @default(uuid())
-  code      String         @unique
+  id        String        @id @default(uuid())
+  code      String        @unique
   label     String
-  createdAt DateTime       @default(now()) @map("created_at")
+  createdAt DateTime      @default(now()) @map("created_at")
   values    LookupValue[]
 
   @@map("lookup_types")
@@ -128,14 +112,13 @@ model Requirement {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
   deletedAt         DateTime?         @map("deleted_at")
-
-  client     Client      @relation(fields: [clientId], references: [id])
-  jobFamily  JobFamily   @relation(fields: [jobFamilyId], references: [id])
-  salesOwner User        @relation("SalesOwner", fields: [salesOwnerId], references: [id])
-  taOwner    User?       @relation("TaOwner", fields: [taOwnerId], references: [id])
-  candidates Candidate[]
-  offers     Offer[]
-  onboardings Onboarding[]
+  candidates        Candidate[]
+  offers            Offer[]
+  onboardings       Onboarding[]
+  client            Client            @relation(fields: [clientId], references: [id])
+  jobFamily         JobFamily         @relation(fields: [jobFamilyId], references: [id])
+  salesOwner        User              @relation("SalesOwner", fields: [salesOwnerId], references: [id])
+  taOwner           User?             @relation("TaOwner", fields: [taOwnerId], references: [id])
 
   @@index([status])
   @@index([taOwnerId])
@@ -146,33 +129,31 @@ model Requirement {
 }
 
 model Candidate {
-  id                   String    @id @default(uuid())
-  publicId             String    @unique @map("public_id")
-  candidateId          Int?      @unique @map("candidate_id")
-  requirementId        String    @map("requirement_id")
+  id                   String      @id @default(uuid())
+  publicId             String      @unique @map("public_id")
+  requirementId        String      @map("requirement_id")
   name                 String
   position             String?   @map("position")
   jobFamily            String?   @map("job_family")
   mobile               String
-  mobileNormalized     String    @map("mobile_normalized")
+  mobileNormalized     String      @map("mobile_normalized")
   email                String
-  emailNormalized      String    @map("email_normalized")
+  emailNormalized      String      @map("email_normalized")
   source               String?
-  candidateStage       String    @map("stage_code")
-  feedbackCode         String?   @map("feedback_code")
-  profileSubmittedDate DateTime? @map("profile_submitted_date") @db.Date
-  clientShortlistDate  DateTime? @map("client_shortlist_date") @db.Date
-  interviewRound       String?   @map("interview_round")
-  selected             Boolean   @default(false)
-  selectedAt           DateTime? @map("selected_at")
+  stageCode            String      @map("stage_code")
+  feedbackCode         String?     @map("feedback_code")
+  profileSubmittedDate DateTime?   @map("profile_submitted_date") @db.Date
+  clientShortlistDate  DateTime?   @map("client_shortlist_date") @db.Date
+  interviewRound       String?     @map("interview_round")
+  selected             Boolean     @default(false)
+  selectedAt           DateTime?   @map("selected_at")
   remarks              String?
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
-  deletedAt            DateTime? @map("deleted_at")
-
-  requirement Requirement @relation(fields: [requirementId], references: [id])
-  offer       Offer?
-  onboarding  Onboarding?
+  createdAt            DateTime    @default(now()) @map("created_at")
+  updatedAt            DateTime    @updatedAt @map("updated_at")
+  deletedAt            DateTime?   @map("deleted_at")
+  requirement          Requirement @relation(fields: [requirementId], references: [id])
+  offer                Offer?
+  onboarding           Onboarding?
 
   @@index([requirementId])
   @@index([mobileNormalized])
@@ -182,23 +163,23 @@ model Candidate {
 }
 
 model Offer {
-  id                 String    @id @default(uuid())
-  publicId           String    @unique @map("public_id")
-  candidateId        String    @unique @map("candidate_id")
-  requirementId      String    @map("requirement_id")
-  offerInitiatedDate DateTime? @map("offer_initiated_date") @db.Date
-  offerReleasedDate  DateTime? @map("offer_released_date") @db.Date
-  statusCode         String    @map("status_code")
-  ctcRate            String?   @map("ctc_rate")
-  expectedDoj        DateTime? @map("expected_doj") @db.Date
+  id                 String      @id @default(uuid())
+  publicId           String      @unique @map("public_id")
+  candidateId        String      @unique @map("candidate_id")
+  requirementId      String      @map("requirement_id")
+  offerInitiatedDate DateTime?   @map("offer_initiated_date") @db.Date
+  offerReleasedDate  DateTime?   @map("offer_released_date") @db.Date
+  statusCode         String      @map("status_code")
+  ctcRate            String?     @map("ctc_rate")
+  expectedDoj        DateTime?   @map("expected_doj") @db.Date
   remarks            String?
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  deletedAt          DateTime? @map("deleted_at")
-
-  candidate   Candidate   @relation(fields: [candidateId], references: [id])
-  requirement Requirement @relation(fields: [requirementId], references: [id])
-  onboarding  Onboarding?
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  deletedAt          DateTime?   @map("deleted_at")
+  selectedDate       DateTime?   @map("selected_date") @db.Date
+  candidate          Candidate   @relation(fields: [candidateId], references: [id])
+  requirement        Requirement @relation(fields: [requirementId], references: [id])
+  onboarding         Onboarding?
 
   @@index([requirementId])
   @@index([statusCode])
@@ -206,27 +187,27 @@ model Offer {
 }
 
 model Onboarding {
-  id                 String    @id @default(uuid())
-  publicId           String    @unique @map("public_id")
-  offerId            String    @unique @map("offer_id")
-  candidateId        String    @unique @map("candidate_id")
-  requirementId      String    @map("requirement_id")
-  hrOwnerId          String    @map("hr_owner_id")
-  docsPending        Boolean   @default(true) @map("docs_pending")
-  bgvStatusCode      String    @map("bgv_status_code")
-  joiningFormalities String?   @map("joining_formalities")
-  expectedDoj        DateTime? @map("expected_doj") @db.Date
-  actualDoj          DateTime? @map("actual_doj") @db.Date
-  statusCode         String    @map("status_code")
+  id                 String      @id @default(uuid())
+  publicId           String      @unique @map("public_id")
+  offerId            String      @unique @map("offer_id")
+  candidateId        String      @unique @map("candidate_id")
+  requirementId      String      @map("requirement_id")
+  hrOwnerId          String      @map("hr_owner_id")
+  docsPending        Boolean     @default(true) @map("docs_pending")
+  bgvStatusCode      String      @map("bgv_status_code")
+  joiningFormalities String?     @map("joining_formalities")
+  expectedDoj        DateTime?   @map("expected_doj") @db.Date
+  actualDoj          DateTime?   @map("actual_doj") @db.Date
+  statusCode         String      @map("status_code")
   remarks            String?
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  deletedAt          DateTime? @map("deleted_at")
-
-  offer       Offer       @relation(fields: [offerId], references: [id])
-  candidate   Candidate   @relation(fields: [candidateId], references: [id])
-  requirement Requirement @relation(fields: [requirementId], references: [id])
-  hrOwner     User        @relation("HrOwner", fields: [hrOwnerId], references: [id])
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  deletedAt          DateTime?   @map("deleted_at")
+  offerAcceptedDate  DateTime?   @map("offer_accepted_date") @db.Date
+  candidate          Candidate   @relation(fields: [candidateId], references: [id])
+  hrOwner            User        @relation("HrOwner", fields: [hrOwnerId], references: [id])
+  offer              Offer       @relation(fields: [offerId], references: [id])
+  requirement        Requirement @relation(fields: [requirementId], references: [id])
 
   @@index([requirementId])
   @@index([statusCode])
@@ -255,4 +236,19 @@ model IdSequence {
   value Int    @default(0)
 
   @@map("id_sequences")
+}
+
+enum Role {
+  ADMIN
+  SALES
+  TA
+  HR
+  LEADERSHIP_READONLY
+}
+
+enum RequirementStatus {
+  ACTIVE
+  ON_HOLD
+  CANCELLED
+  CLOSED
 }
