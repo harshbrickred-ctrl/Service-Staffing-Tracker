@@ -86,7 +86,7 @@ export class CandidatesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  stageCode?: string;
+  candidateStage?: string;
 
   @ApiPropertyOptional({
     example: 'true',

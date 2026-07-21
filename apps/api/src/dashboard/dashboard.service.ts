@@ -145,7 +145,7 @@ export class DashboardService {
 
     const stageGroups = reqIds.length
       ? await this.prisma.candidate.groupBy({
-          by: ['stageCode'],
+          by: ['candidateStage'],
           where: { deletedAt: null, requirementId: { in: reqIds } },
           _count: { _all: true },
         })
@@ -196,7 +196,8 @@ export class DashboardService {
 
     return {
       byStage: stageGroups.map((g) => ({
-        stageCode: g.stageCode,
+        candidateStage: g.candidateStage,
+        stageCode: g.candidateStage,
         count: g._count._all,
       })),
       byRag: Object.entries(ragCounts).map(([rag, count]) => ({

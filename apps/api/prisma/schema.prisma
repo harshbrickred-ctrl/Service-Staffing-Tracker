@@ -148,14 +148,17 @@ model Requirement {
 model Candidate {
   id                   String    @id @default(uuid())
   publicId             String    @unique @map("public_id")
+  candidateId          Int?      @unique @map("candidate_id")
   requirementId        String    @map("requirement_id")
   name                 String
+  position             String?   @map("position")
+  jobFamily            String?   @map("job_family")
   mobile               String
   mobileNormalized     String    @map("mobile_normalized")
   email                String
   emailNormalized      String    @map("email_normalized")
   source               String?
-  stageCode            String    @map("stage_code")
+  candidateStage       String    @map("stage_code")
   feedbackCode         String?   @map("feedback_code")
   profileSubmittedDate DateTime? @map("profile_submitted_date") @db.Date
   clientShortlistDate  DateTime? @map("client_shortlist_date") @db.Date

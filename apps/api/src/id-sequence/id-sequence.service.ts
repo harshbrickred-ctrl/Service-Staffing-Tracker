@@ -20,4 +20,18 @@ export class IdSequenceService {
     });
     return formatPublicId(prefix, row.value);
   }
+
+  async nextNumber(
+    name: string,
+    startValue = 1000,
+    tx?: Prisma.TransactionClient,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const row = await client.idSequence.upsert({
+      where: { name },
+      create: { name, value: startValue },
+      update: { value: { increment: 1 } },
+    });
+    return row.value;
+  }
 }
