@@ -28,17 +28,6 @@ export class OnboardingService {
     const offerReleasedDate = row.offer?.offerReleasedDate ?? null;
     const offerStatus = row.offer?.statusCode ?? null;
     const ctcRate = row.offer?.ctcRate ?? null;
-    const offerAcceptedDate = row.offerAcceptedDate ?? null;
-    const onboardingTATDays =
-      offerReleasedDate && offerAcceptedDate
-        ? Math.max(
-            0,
-            Math.round(
-              (offerAcceptedDate.getTime() - offerReleasedDate.getTime()) /
-                (1000 * 60 * 60 * 24),
-            ),
-          )
-        : null;
 
     return {
       ...row,
@@ -55,14 +44,13 @@ export class OnboardingService {
       offerStatus,
       ctcRate,
       hrOwnerName: row.hrOwner?.fullName ?? null,
-      offerAcceptedDate,
       expectedDOJ: row.expectedDoj,
       pendingDocs: row.docsPending,
       bgvStatus: row.bgvStatusCode,
       joiningFormalities: row.joiningFormalities,
       actualDOJ: row.actualDoj,
       onboardingStatus: row.statusCode,
-      onboardingTATDays,
+      requirementStatus: row.requirement?.status ?? null,
       remarks: row.remarks,
     };
   }
@@ -92,7 +80,12 @@ export class OnboardingService {
           },
           hrOwner: { select: { id: true, fullName: true, email: true } },
           requirement: {
-            select: { id: true, publicId: true, roleSkill: true },
+            select: {
+              id: true,
+              publicId: true,
+              roleSkill: true,
+              status: true,
+            },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -170,14 +163,19 @@ export class OnboardingService {
         expectedDoj: dto.expectedDoj
           ? new Date(dto.expectedDoj)
           : offer.expectedDoj,
-        offerAcceptedDate: dto.offerAcceptedDate
-          ? new Date(dto.offerAcceptedDate)
-          : undefined,
         statusCode: dto.statusCode ?? 'IN_PROGRESS',
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            mobile: true,
+            email: true,
+          },
+        },
         offer: {
           select: {
             id: true,
@@ -219,12 +217,6 @@ export class OnboardingService {
             ? undefined
             : dto.expectedDoj
               ? new Date(dto.expectedDoj)
-              : null,
-        offerAcceptedDate:
-          dto.offerAcceptedDate === undefined
-            ? undefined
-            : dto.offerAcceptedDate
-              ? new Date(dto.offerAcceptedDate)
               : null,
         actualDoj:
           dto.actualDoj === undefined

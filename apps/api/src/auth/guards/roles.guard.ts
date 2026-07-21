@@ -14,6 +14,28 @@ export class RolesGuard implements CanActivate {
     ]);
     if (!roles?.length) return true;
     const { user } = context.switchToHttp().getRequest();
-    return roles.includes(user?.role);
+    const allowed = roles.includes(user?.role);
+    if (!allowed) {
+      try {
+        const userId = user?.id ?? 'unknown';
+        const userRole = user?.role ?? 'unknown';
+        // eslint-disable-next-line no-console
+        console.warn(`[RolesGuard] Access denied — required:[${roles.join(',')}], user:${userId}(${userRole})`);
+        // Additional debug: print raw roles array and element types to diagnose mismatches
+        try {
+          // eslint-disable-next-line no-console
+          console.warn('[RolesGuard] roles raw:', JSON.stringify(roles));
+        } catch (e) {
+          // fallback when roles contains non-serializable entries
+          // eslint-disable-next-line no-console
+          console.warn('[RolesGuard] roles raw (fallback):', roles);
+        }
+        // eslint-disable-next-line no-console
+        console.warn('[RolesGuard] roles types:', roles.map((r) => `${typeof r}:${String(r)}`).join(','));
+      } catch (e) {
+        // ignore logging failures
+      }
+    }
+    return allowed;
   }
 }
