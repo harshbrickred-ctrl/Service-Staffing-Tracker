@@ -1053,11 +1053,9 @@ All endpoints are under `/api/v1` **except** `health`, `ready`, and `metrics`, w
 
 #### Dashboard (`apps/api/src/dashboard/dashboard.controller.ts`)
 
-- `GET /api/v1/dashboard/summary` (**JWT required**)
-- `GET /api/v1/dashboard/breakdowns` (**JWT required**)
-- `GET /api/v1/dashboard/escalations` (**JWT required**)
+- `GET /api/v1/dashboard` (**JWT required**) — returns summary, breakdowns, and escalations
 
-Note: Dashboard endpoints use `JwtAuthGuard` but no `RolesGuard`, so any authenticated role can access them.
+Note: The Dashboard endpoint uses `JwtAuthGuard` but no `RolesGuard`, so any authenticated role can access it.
 
 #### Audit (`apps/api/src/audit/audit.controller.ts`)
 

@@ -15,6 +15,16 @@ const percentage = (count: number, total: number) =>
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getDashboard(query: DashboardQueryDto) {
+    const [summary, breakdowns, escalations] = await Promise.all([
+      this.summary(query),
+      this.breakdowns(query),
+      this.escalations(query),
+    ]);
+
+    return { summary, breakdowns, escalations };
+  }
+
   private requirementWhere(
     query: DashboardQueryDto,
   ): Prisma.RequirementWhereInput {

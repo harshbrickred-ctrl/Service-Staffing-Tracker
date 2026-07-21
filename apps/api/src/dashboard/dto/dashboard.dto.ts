@@ -180,3 +180,14 @@ export class DashboardEscalationsDto {
   })
   wasted!: DashboardEscalationItemDto[];
 }
+
+export class DashboardDto {
+  @ApiProperty({ type: DashboardSummaryDto })
+  summary!: DashboardSummaryDto;
+
+  @ApiProperty({ type: DashboardBreakdownsDto })
+  breakdowns!: DashboardBreakdownsDto;
+
+  @ApiProperty({ type: DashboardEscalationsDto })
+  escalations!: DashboardEscalationsDto;
+}
