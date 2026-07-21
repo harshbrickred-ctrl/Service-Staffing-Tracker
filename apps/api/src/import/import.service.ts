@@ -216,18 +216,16 @@ export class ImportService {
       });
       if (!req) continue;
       const publicId = await this.ids.next('candidate', 'CAN');
-      const candidateId = await this.ids.nextNumber('candidateId', 1000);
       await this.prisma.candidate.create({
         data: {
           publicId,
-          candidateId,
           requirementId: req.id,
           name: obj.name,
           mobile: obj.mobile,
           mobileNormalized: normalizeMobile(obj.mobile),
           email: obj.email,
           emailNormalized: normalizeEmail(obj.email),
-          candidateStage: obj.stageCode,
+          stageCode: obj.stageCode,
           feedbackCode: obj.feedbackCode || null,
           source: obj.source || null,
         },

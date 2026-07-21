@@ -10,6 +10,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useAuth } from '@/features/auth/auth-context';
+import { requirementKeys } from '@/features/requirements/hooks/requirement-query-keys';
 import { AdminUsersPanel } from '../components/admin-users-panel';
 
 export function AdminPage() {
@@ -45,6 +46,7 @@ export function AdminPage() {
     onSuccess: () => {
       toast.success('Client created');
       qc.invalidateQueries({ queryKey: ['clients'] });
+      qc.invalidateQueries({ queryKey: requirementKeys.masters() });
     },
   });
 
@@ -54,6 +56,7 @@ export function AdminPage() {
     onSuccess: () => {
       toast.success('Job family created');
       qc.invalidateQueries({ queryKey: ['job-families'] });
+      qc.invalidateQueries({ queryKey: requirementKeys.masters() });
     },
   });
 
