@@ -17,7 +17,7 @@ export class UsersService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(page = 1, pageSize = 20, role?: Role) {
+  async list(page = 1, pageSize = 20, role?: Role): Promise<any> {
     const where = {
       deletedAt: null,
       ...(role ? { role } : {}),
@@ -43,7 +43,7 @@ export class UsersService {
   }
 
   /** Lightweight active-user picker for assignment dropdowns (e.g. Sales → TA). */
-  async directory(role?: Role) {
+  async directory(role?: Role): Promise<any> {
     return this.prisma.user.findMany({
       where: {
         deletedAt: null,
@@ -61,7 +61,7 @@ export class UsersService {
     });
   }
 
-  async create(dto: CreateUserDto, actorId: string) {
+  async create(dto: CreateUserDto, actorId: string): Promise<any> {
     const email = dto.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing && !existing.deletedAt) {
@@ -93,7 +93,7 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto, actorId: string) {
+  async update(id: string, dto: UpdateUserDto, actorId: string): Promise<any> {
     const before = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });

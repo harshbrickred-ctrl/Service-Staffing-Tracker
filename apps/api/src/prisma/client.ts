@@ -1,6 +1,6 @@
 /**
  * Stable Prisma re-export for Nest + IDE.
- * Client is generated to apps/api/generated/prisma (see schema.prisma output).
+ * Use the generated client from `@prisma/client`.
  */
 export {
   Prisma,
@@ -8,4 +8,4 @@ export {
   Role,
   RequirementStatus,
   $Enums,
-} from '../../generated/prisma';
+} from '@prisma/client';

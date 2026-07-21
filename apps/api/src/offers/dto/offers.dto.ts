@@ -30,6 +30,11 @@ export class CreateOfferDto {
   @IsString()
   ctcRate?: string;
 
+  @ApiPropertyOptional({ example: 'Referral' })
+  @IsOptional()
+  @IsString()
+  source?: string;
+
   @ApiPropertyOptional({ example: '2026-08-01' })
   @IsOptional()
   @IsDateString()
@@ -56,6 +61,11 @@ export class UpdateOfferDto {
   @IsOptional()
   @IsString()
   ctcRate?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  source?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -51,7 +51,7 @@ export class UsersController {
   })
   @ApiOkResponse({ description: 'Directory entries' })
   @ApiProtectedErrors()
-  directory(@Query('role') role?: Role) {
+  directory(@Query('role') role?: Role): Promise<any> {
     return this.users.directory(role);
   }
 
@@ -67,7 +67,7 @@ export class UsersController {
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
     @Query('role') role?: Role,
-  ) {
+  ): Promise<any> {
     return this.users.list(
       page ? Number(page) : 1,
       pageSize ? Number(pageSize) : 50,
@@ -80,7 +80,7 @@ export class UsersController {
   @ApiOperation({ operationId: 'createUser', summary: 'Create user (Admin)' })
   @ApiCreatedResponse({ description: 'Created user' })
   @ApiMutateErrors()
-  create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: AuthUser): Promise<any> {
     return this.users.create(dto, user.id);
   }
 
@@ -97,7 +97,7 @@ export class UsersController {
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.users.update(id, dto, user.id);
   }
 

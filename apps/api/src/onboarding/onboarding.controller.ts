@@ -48,7 +48,7 @@ export class OnboardingController {
   })
   @ApiOkResponse({ description: 'Paginated onboardings' })
   @ApiProtectedErrors()
-  list(@Query() query: OnboardingsQueryDto) {
+  list(@Query() query: OnboardingsQueryDto): Promise<any> {
     return this.onboarding.list(query as Record<string, string>);
   }
 
@@ -60,7 +60,7 @@ export class OnboardingController {
   @ApiParam({ name: 'id', description: 'UUID or publicId' })
   @ApiOkResponse({ description: 'Onboarding detail' })
   @ApiProtectedErrors()
-  get(@Param('id') id: string) {
+  get(@Param('id') id: string): Promise<any> {
     return this.onboarding.get(id);
   }
 
@@ -72,7 +72,7 @@ export class OnboardingController {
   })
   @ApiCreatedResponse({ description: 'Created onboarding' })
   @ApiMutateErrors()
-  create(@Body() dto: CreateOnboardingDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateOnboardingDto, @CurrentUser() user: AuthUser): Promise<any> {
     return this.onboarding.create(dto, user.id);
   }
 
@@ -89,7 +89,7 @@ export class OnboardingController {
     @Param('id') id: string,
     @Body() dto: UpdateOnboardingDto,
     @CurrentUser() user: AuthUser,
-  ) {
+  ): Promise<any> {
     return this.onboarding.update(id, dto, user.id);
   }
 

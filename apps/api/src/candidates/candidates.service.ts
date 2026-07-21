@@ -102,7 +102,7 @@ export class CandidatesService {
     };
   }
 
-  async get(id: string) {
+  async get(id: string): Promise<any> {
     const row = await this.prisma.candidate.findFirst({
       where: { id, deletedAt: null },
       include: {
@@ -121,7 +121,7 @@ export class CandidatesService {
     return { ...this.toCandidateResponse(row), ...flags };
   }
 
-  async create(dto: CreateCandidateDto, actorId: string) {
+  async create(dto: CreateCandidateDto, actorId: string): Promise<any> {
     const req = await this.prisma.requirement.findFirst({
       where: { id: dto.requirementId, deletedAt: null },
     });
@@ -170,7 +170,7 @@ export class CandidatesService {
     return { ...this.toCandidateResponse(row), ...flags };
   }
 
-  async update(id: string, dto: UpdateCandidateDto, actorId: string) {
+  async update(id: string, dto: UpdateCandidateDto, actorId: string): Promise<any> {
     const before = await this.prisma.candidate.findFirst({
       where: { id, deletedAt: null },
     });
@@ -231,7 +231,7 @@ export class CandidatesService {
     return { ...this.toCandidateResponse(row), ...flags };
   }
 
-  async select(id: string, selected: boolean, actorId: string) {
+  async select(id: string, selected: boolean, actorId: string): Promise<any> {
     const before = await this.prisma.candidate.findFirst({
       where: { id, deletedAt: null },
       include: { offer: true },
