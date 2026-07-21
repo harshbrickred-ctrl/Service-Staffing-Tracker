@@ -101,6 +101,9 @@ export function RequirementsPage() {
   });
 
   const canCreate = user?.role === 'ADMIN' || user?.role === 'SALES';
+  const canEditRow = (salesOwnerId: string) =>
+    user?.role === 'ADMIN' ||
+    (user?.role === 'SALES' && salesOwnerId === user.id);
   const totalPages = list.data?.totalPages ?? 1;
 
   const defaultFormValues: RequirementFormValues = {
@@ -212,6 +215,9 @@ export function RequirementsPage() {
                   <th className="px-3 py-2 font-medium">TA Handoff SLA</th>
                   <th className="px-3 py-2 font-medium">Req Status</th>
                   <th className="px-3 py-2 font-medium">Closure Status</th>
+                  {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+                    <th className="px-3 py-2 font-medium">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -256,6 +262,17 @@ export function RequirementsPage() {
                     <td className="px-3 py-2">
                       <ClosureStatusChip status={r.closureStatus} />
                     </td>
+                    {(user?.role === 'ADMIN' || user?.role === 'SALES') && (
+                      <td className="px-3 py-2">
+                        {canEditRow(r.salesOwnerId) ? (
+                          <Button asChild size="sm" variant="outline">
+                            <Link to={`/requirements/${r.id}?edit=1`}>Edit</Link>
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    )}
                   </motion.tr>
                 ))}
               </tbody>

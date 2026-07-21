@@ -19,6 +19,7 @@ export function CandidatesPage() {
   const requirementId = params.get('requirementId') ?? '';
   const [showForm, setShowForm] = useState(!!requirementId);
   const [q, setQ] = useState('');
+  const canEdit = user?.role === 'ADMIN' || user?.role === 'TA';
 
   const list = useQuery({
     queryKey: ['candidates', requirementId, q],
@@ -43,6 +44,13 @@ export function CandidatesPage() {
     queryKey: ['lookups', 'CANDIDATE_STAGE'],
     queryFn: async () =>
       (await api.get('/master-data/lookups/CANDIDATE_STAGE')).data,
+  });
+
+  const candidateStatuses = useQuery({
+    queryKey: ['master', 'candidate-status'],
+    queryFn: async () =>
+      (await api.get('/master-data/candidate-status')).data as string[],
+    enabled: canEdit,
   });
 
   const create = useMutation({
@@ -70,8 +78,6 @@ export function CandidatesPage() {
     },
     onError: () => toast.error('Select failed'),
   });
-
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'TA';
 
   return (
     <PageFade>
@@ -110,7 +116,7 @@ export function CandidatesPage() {
               email: fd.get('email'),
               source: fd.get('source') || undefined,
               stageCode: fd.get('stageCode'),
-              feedbackCode: 'PENDING',
+              candidateStatus: fd.get('candidateStatus') || undefined,
               profileSubmittedDate: fd.get('profileSubmittedDate') || undefined,
             });
           }}
@@ -159,6 +165,20 @@ export function CandidatesPage() {
                   </option>
                 ),
               )}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label>Candidate status</Label>
+            <select
+              name="candidateStatus"
+              className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
+              defaultValue="Pending"
+            >
+              {(candidateStatuses.data ?? ['Pending']).map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
             </select>
           </div>
           <div className="space-y-1">

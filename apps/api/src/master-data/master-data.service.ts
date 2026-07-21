@@ -26,6 +26,8 @@ const MEMBER_SELECT = {
   createdAt: true,
 } as const;
 
+const CANDIDATE_STATUSES = ['Selected', 'Rejected', 'Pending'] as const;
+
 @Injectable()
 export class MasterDataService {
   constructor(
@@ -41,6 +43,10 @@ export class MasterDataService {
       },
       orderBy: { sortOrder: 'asc' },
     });
+  }
+
+  listCandidateStatus(): readonly string[] {
+    return CANDIDATE_STATUSES;
   }
 
   async createLookup(

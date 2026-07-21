@@ -35,10 +35,10 @@ export class CreateCandidateDto {
   @IsString()
   stageCode!: string;
 
-  @ApiPropertyOptional({ example: 'PENDING' })
+  @ApiPropertyOptional({ example: 'Pending' })
   @IsOptional()
   @IsString()
-  feedbackCode?: string;
+  candidateStatus?: string;
 
   @ApiPropertyOptional({ example: '2026-07-10' })
   @IsOptional()
@@ -80,7 +80,7 @@ export class UpdateCandidateDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  feedbackCode?: string | null;
+  candidateStatus?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

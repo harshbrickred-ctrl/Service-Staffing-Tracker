@@ -353,11 +353,55 @@ export class RequirementsService {
     return this.withDerived(row, 0);
   }
 
-  async update(id: string, dto: UpdateRequirementDto, actor: AuthUser): Promise<any> {
+  private pickSalesUpdate(dto: UpdateRequirementDto): UpdateRequirementDto {
+    const { salesOwnerId: _ignored, ...rest } = dto;
+    return rest;
+  }
+
+  /** Full-body edit after creation (Sales/Admin). Sales cannot reassign owner. */
+  async replace(id: string, dto: CreateRequirementDto, actor: AuthUser) : Promise<RequirementRow & Record<string, unknown>>{
+    const before = await this.findRequirementOrThrow(id);
+    if (actor.role === Role.SALES && before.salesOwnerId !== actor.id) {
+      throw new ForbiddenException(
+        'Sales may only update requirements they own',
+      );
+    }
+
+    const payload: UpdateRequirementDto = {
+      requirementDate: dto.requirementDate,
+      clientId: dto.clientId,
+      roleSkill: dto.roleSkill,
+      jobFamilyId: dto.jobFamilyId,
+      numberOfPositions: dto.numberOfPositions,
+      priorityCode: dto.priorityCode,
+      taOwnerId: dto.taOwnerId ?? null,
+      taHandoffDate: dto.taHandoffDate ?? null,
+      targetClosureDate: dto.targetClosureDate ?? null,
+      remarks: dto.remarks ?? null,
+      experience: dto.experience ?? null,
+      jobLocation: dto.jobLocation ?? null,
+      minBudget: dto.minBudget ?? null,
+      maxBudget: dto.maxBudget ?? null,
+      durationMonths: dto.durationMonths ?? null,
+      salesOwnerId:
+        actor.role === Role.ADMIN ? dto.salesOwnerId : before.salesOwnerId,
+    };
+
+    return this.update(id, payload, actor);
+  }
+
+  async update(id: string, dto: UpdateRequirementDto, actor: AuthUser): Promise<RequirementRow & Record<string, unknown>>  {
     const before = await this.findRequirementOrThrow(id);
 
     let payload = dto;
-    if (actor.role === Role.TA) {
+    if (actor.role === Role.SALES) {
+      if (before.salesOwnerId !== actor.id) {
+        throw new ForbiddenException(
+          'Sales may only update requirements they own',
+        );
+      }
+      payload = this.pickSalesUpdate(dto);
+    } else if (actor.role === Role.TA) {
       if (before.taOwnerId && before.taOwnerId !== actor.id) {
         throw new ForbiddenException(
           'TA may only update requirements assigned to them',

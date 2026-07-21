@@ -61,9 +61,9 @@ export const requirementFormSchema = z
 
 export type RequirementFormValues = z.infer<typeof requirementFormSchema>;
 
-export function toCreateBody(
+export function toRequirementBody(
   values: RequirementFormValues,
-  salesOwnerFallback?: string,
+  salesOwnerId: string,
 ) {
   return {
     requirementDate: values.requirementDate,
@@ -71,7 +71,7 @@ export function toCreateBody(
     roleSkill: values.roleSkill.trim(),
     jobFamilyId: values.jobFamilyId,
     numberOfPositions: values.numberOfPositions,
-    salesOwnerId: values.salesOwnerId || salesOwnerFallback!,
+    salesOwnerId,
     priorityCode: values.priorityCode,
     taOwnerId: values.taOwnerId || null,
     taHandoffDate: values.taHandoffDate || null,
@@ -92,4 +92,12 @@ export function toCreateBody(
         ? null
         : Number(values.durationMonths),
   };
+}
+
+/** @deprecated use toRequirementBody with explicit salesOwnerId */
+export function toCreateBody(
+  values: RequirementFormValues,
+  salesOwnerFallback?: string,
+) {
+  return toRequirementBody(values, values.salesOwnerId || salesOwnerFallback!);
 }

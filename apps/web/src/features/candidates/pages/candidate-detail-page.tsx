@@ -46,6 +46,10 @@ export function CandidateDetailPage() {
           <span className="font-mono text-xs">{c.stageCode}</span>
         </div>
         <div>
+          <div className="text-xs text-muted-foreground">Candidate status</div>
+          {c.candidateStatus ?? '—'}
+        </div>
+        <div>
           <div className="text-xs text-muted-foreground">Selected</div>
           {c.selected ? (
             <Badge variant="success">Yes</Badge>

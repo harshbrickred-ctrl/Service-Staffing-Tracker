@@ -9,12 +9,15 @@
     "target": "ES2022",
     "sourceMap": true,
     "outDir": "./dist",
+    "rootDir": ".",
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
     "strict": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+   
   },
-  "include": ["src", "prisma"]
+  "include": ["src/**/*", "prisma/seed.ts"],
+  "exclude": ["node_modules", "dist", "generated"]
 }
