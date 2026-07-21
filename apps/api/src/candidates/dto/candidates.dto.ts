@@ -31,9 +31,19 @@ export class CreateCandidateDto {
   @IsString()
   source?: string;
 
+  @ApiPropertyOptional({ example: 'Software Engineer' })
+  @IsOptional()
+  @IsString()
+  position?: string;
+
+  @ApiPropertyOptional({ example: 'Application Development' })
+  @IsOptional()
+  @IsString()
+  jobFamily?: string;
+
   @ApiProperty({ example: 'SUBMITTED_TO_SPOC' })
   @IsString()
-  stageCode!: string;
+  candidateStage!: string;
 
   @ApiPropertyOptional({ example: 'Pending' })
   @IsOptional()
@@ -44,6 +54,16 @@ export class CreateCandidateDto {
   @IsOptional()
   @IsDateString()
   profileSubmittedDate?: string;
+
+  @ApiPropertyOptional({ example: '2026-07-15' })
+  @IsOptional()
+  @IsDateString()
+  clientShortlistDate?: string;
+
+  @ApiPropertyOptional({ example: 'Round 1' })
+  @IsOptional()
+  @IsString()
+  interviewRound?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -75,7 +95,17 @@ export class UpdateCandidateDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  stageCode?: string;
+  position?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  jobFamily?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  candidateStage?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

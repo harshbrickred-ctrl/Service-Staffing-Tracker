@@ -59,7 +59,7 @@ export class CandidatesService {
     const where: Prisma.CandidateWhereInput = {
       deletedAt: null,
       ...(query.requirementId ? { requirementId: query.requirementId } : {}),
-      ...(query.stageCode ? { stageCode: query.stageCode } : {}),
+      ...(query.candidateStage ? { candidateStage: query.candidateStage } : {}),
       ...(query.selected !== undefined
         ? { selected: query.selected === 'true' }
         : {}),
@@ -136,22 +136,34 @@ export class CandidatesService {
     const emailNormalized = normalizeEmail(dto.email);
     const flags = await this.duplicateFlags(mobileNormalized, emailNormalized);
     const publicId = await this.ids.next('candidate', 'CAN');
+    const candidateId = await this.ids.nextNumber('candidateId', 1000);
+    const candidateStage = dto.candidateStage;
 
     const row = await this.prisma.candidate.create({
       data: {
         publicId,
+        candidateId,
         requirementId: dto.requirementId,
         name: dto.name,
+        position: dto.position,
+        jobFamily: dto.jobFamily,
         mobile: dto.mobile,
         mobileNormalized,
         email: dto.email,
         emailNormalized,
         source: dto.source,
-        stageCode: dto.stageCode,
+        candidateStage,
         feedbackCode: dto.candidateStatus,
         profileSubmittedDate: dto.profileSubmittedDate
           ? new Date(dto.profileSubmittedDate)
           : undefined,
+        clientShortlistDate:
+          dto.clientShortlistDate === undefined
+            ? undefined
+            : dto.clientShortlistDate
+            ? new Date(dto.clientShortlistDate)
+            : null,
+        interviewRound: dto.interviewRound,
         remarks: dto.remarks,
       },
       include: {
@@ -183,16 +195,19 @@ export class CandidatesService {
       ? normalizeEmail(dto.email)
       : before.emailNormalized;
 
+    const candidateStage = dto.candidateStage;
     const row = await this.prisma.candidate.update({
       where: { id },
       data: {
         name: dto.name,
+        position: dto.position,
+        jobFamily: dto.jobFamily,
         mobile: dto.mobile,
         mobileNormalized: dto.mobile ? mobileNormalized : undefined,
         email: dto.email,
         emailNormalized: dto.email ? emailNormalized : undefined,
         source: dto.source,
-        stageCode: dto.stageCode,
+        candidateStage,
         feedbackCode: dto.candidateStatus,
         profileSubmittedDate:
           dto.profileSubmittedDate === undefined
