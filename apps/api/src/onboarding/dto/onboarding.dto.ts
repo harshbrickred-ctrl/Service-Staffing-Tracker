@@ -5,13 +5,14 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOnboardingDto {
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
-  candidateId!: string;  // Changed from offerId
+  @ApiProperty({ example: 'CAN-00001', description: 'Sequential candidate id' })
+  @Matches(/^CAN-\d+$/i)
+  candidateId!: string;
 
   
   @ApiProperty({ format: 'uuid' })

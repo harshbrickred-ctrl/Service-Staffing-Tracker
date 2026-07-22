@@ -224,7 +224,6 @@ export function CandidatesPage() {
                 (
                   c: {
                     id: string;
-                    publicId: string;
                     name: string;
                     stageCode: string;
                     selected: boolean;
@@ -244,7 +243,7 @@ export function CandidatesPage() {
                         to={`/candidates/${c.id}`}
                         className="text-primary hover:underline"
                       >
-                        {c.publicId}
+                        {c.id}
                       </Link>
                     </td>
                     <td className="px-3 py-2">{c.name}</td>

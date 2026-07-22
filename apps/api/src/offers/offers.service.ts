@@ -44,7 +44,6 @@ async list(query: Record<string, string | undefined>) {
         candidate: {
           select: {
             id: true,
-            publicId: true,
             name: true,
             email: true,
             mobile: true,
@@ -81,6 +80,9 @@ async list(query: Record<string, string | undefined>) {
     offerStatus: record.statusCode,
   }));
 
+  return { items, total, page, pageSize };
+}
+
   async listCandidates(query: Record<string, string | undefined>) {
     const page = Math.max(1, Number(query.page ?? 1) || 1);
     const pageSize = Math.min(
@@ -97,7 +99,7 @@ async list(query: Record<string, string | undefined>) {
       ...(query.q
         ? {
             OR: [
-              { publicId: { contains: query.q, mode: 'insensitive' } },
+              { id: { contains: query.q, mode: 'insensitive' } },
               { name: { contains: query.q, mode: 'insensitive' } },
               { email: { contains: query.q, mode: 'insensitive' } },
               { mobile: { contains: query.q } },
@@ -123,7 +125,6 @@ async list(query: Record<string, string | undefined>) {
         where,
         select: {
           id: true,
-          publicId: true,
           name: true,
           email: true,
           mobile: true,
@@ -152,7 +153,7 @@ async list(query: Record<string, string | undefined>) {
 
     const items = records.map((candidate) => ({
       id: candidate.id,
-      candidateId: candidate.publicId,
+      candidateId: candidate.id,
       name: candidate.name,
       position: candidate.requirement.roleSkill,
       client: candidate.requirement.client.name,
@@ -164,7 +165,6 @@ async list(query: Record<string, string | undefined>) {
       candidateStatus:
         candidate.feedbackCode ?? (candidate.selected ? 'Selected' : 'Pending'),
       details: {
-        candidateUuid: candidate.id,
         requirementId: candidate.requirement.id,
         requirementPublicId: candidate.requirement.publicId,
         clientId: candidate.requirement.client.id,
@@ -217,8 +217,11 @@ async list(query: Record<string, string | undefined>) {
   };
 }
   async create(dto: CreateOfferDto, actorId: string) {
+    const candidateKey = /^CAN-\d+$/i.test(dto.candidateId)
+      ? dto.candidateId.toUpperCase()
+      : dto.candidateId;
     const candidate = await this.prisma.candidate.findFirst({
-      where: { id: dto.candidateId, deletedAt: null },
+      where: { id: candidateKey, deletedAt: null },
       include: { offer: true },
     });
     if (!candidate) throw new NotFoundException('Candidate not found');
@@ -249,7 +252,6 @@ async list(query: Record<string, string | undefined>) {
         candidate: {
           select: {
             id: true,
-            publicId: true,
             name: true,
             email: true,
             mobile: true,
@@ -306,7 +308,6 @@ async list(query: Record<string, string | undefined>) {
         candidate: {
           select: {
             id: true,
-            publicId: true,
             name: true,
             email: true,
             mobile: true,
@@ -343,7 +344,6 @@ async list(query: Record<string, string | undefined>) {
         candidate: {
           select: {
             id: true,
-            publicId: true,
             name: true,
             email: true,
             mobile: true,

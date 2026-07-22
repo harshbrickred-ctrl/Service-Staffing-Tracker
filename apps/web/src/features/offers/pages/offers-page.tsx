@@ -99,9 +99,9 @@ export function OffersPage() {
               className="flex h-9 w-full rounded-md border border-input bg-card px-3 text-sm"
             >
               {(selected.data?.items ?? []).map(
-                (c: { id: string; publicId: string; name: string }) => (
+                (c: { id: string; name: string }) => (
                   <option key={c.id} value={c.id}>
-                    {c.publicId} — {c.name}
+                    {c.id} — {c.name}
                   </option>
                 ),
               )}

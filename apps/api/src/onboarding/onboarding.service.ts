@@ -33,7 +33,7 @@ export class OnboardingService {
       ...row,
       onboardingId: row.publicId,
       candidateId: row.candidate?.id,
-      candidateCode: row.candidate?.publicId,
+      candidateCode: row.candidate?.id,
       reqId: row.requirement?.publicId,
       candidateName: row.candidate?.name,
       mobileNumber: row.candidate?.mobile,
@@ -80,7 +80,6 @@ export class OnboardingService {
           candidate: {
             select: {
               id: true,
-              publicId: true,
               name: true,
               mobile: true,
               email: true,
@@ -172,9 +171,12 @@ export class OnboardingService {
     dto: CreateOnboardingDto,
     actorId: string,
   ): Promise<any> {
+    const candidateKey = /^CAN-\d+$/i.test(dto.candidateId)
+      ? dto.candidateId.toUpperCase()
+      : dto.candidateId;
     const offer = await this.prisma.offer.findFirst({
     where: { 
-      candidate: { id: dto.candidateId },
+      candidate: { id: candidateKey },
       deletedAt: null,
     },
     include: { onboarding: true },
@@ -236,14 +238,13 @@ export class OnboardingService {
         expectedDoj: dto.expectedDoj
           ? new Date(dto.expectedDoj)
           : offer.expectedDoj,
-        statusCode: dto.statusCode ?? 'IN_PROGRESS',
+        statusCode: dto.onboardingStatus ?? 'IN_PROGRESS',
         remarks: dto.remarks,
       },
       include: {
         candidate: {
           select: {
             id: true,
-            publicId: true,
             name: true,
             mobile: true,
             email: true,
@@ -259,7 +260,8 @@ export class OnboardingService {
             ctcRate: true,
           },
         },
-      });
+      },
+    });
 
     await this.audit.log({
       entityType: 'Onboarding',
@@ -299,7 +301,7 @@ export class OnboardingService {
         remarks: dto.remarks,
       },
       include: {
-        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+        candidate: { select: { id: true, name: true, mobile: true, email: true } },
         offer: {
           select: {
             id: true,
@@ -310,7 +312,8 @@ export class OnboardingService {
             ctcRate: true,
           },
         },
-      });
+      },
+    });
 
     await this.audit.log({
       entityType: 'Onboarding',
@@ -410,7 +413,6 @@ export class OnboardingService {
                 candidate: {
                   select: {
                     id: true,
-                    publicId: true,
                     name: true,
                     mobile: true,
                     email: true,

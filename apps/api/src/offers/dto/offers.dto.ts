@@ -2,13 +2,13 @@ import {
   IsDateString,
   IsOptional,
   IsString,
-  IsUUID,
+  Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateOfferDto {
-  @ApiProperty({ format: 'uuid' })
-  @IsUUID()
+  @ApiProperty({ example: 'CAN-00001', description: 'Sequential candidate id' })
+  @Matches(/^CAN-\d+$/i)
   candidateId!: string;
 
   @ApiPropertyOptional({ example: '2026-07-12' })

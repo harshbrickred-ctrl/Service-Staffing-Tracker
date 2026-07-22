@@ -215,10 +215,10 @@ export class ImportService {
         where: { publicId: obj.requirementPublicId, deletedAt: null },
       });
       if (!req) continue;
-      const publicId = await this.ids.next('candidate', 'CAN');
+      const id = await this.ids.next('candidate', 'CAN');
       await this.prisma.candidate.create({
         data: {
-          publicId,
+          id,
           requirementId: req.id,
           name: obj.name,
           mobile: obj.mobile,
