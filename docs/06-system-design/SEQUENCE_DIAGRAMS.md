@@ -91,10 +91,10 @@ sequenceDiagram
   participant API
   participant Agg
   participant DB
-  UI->>API: GET /dashboard/summary?filters
+  UI->>API: GET /dashboard?filters
   API->>Agg: aggregate
   Agg->>DB: SQL group by / counts
-  API-->>UI: DashboardSummaryDto
+  API-->>UI: DashboardDto
 ```
 
 ## 6. Token refresh

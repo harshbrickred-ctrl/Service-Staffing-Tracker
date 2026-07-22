@@ -129,10 +129,13 @@ model Requirement {
 }
 
 model Candidate {
-  id                   String      @id @default(uuid())
+  id          String      @id @default(uuid())
+  candidateId Int         @unique
   publicId             String      @unique @map("public_id")
   requirementId        String      @map("requirement_id")
   name                 String
+  position             String?   @map("position")
+  jobFamily            String?   @map("job_family")
   mobile               String
   mobileNormalized     String      @map("mobile_normalized")
   email                String

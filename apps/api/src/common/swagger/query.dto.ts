@@ -1,5 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 /** Shared list/pagination query fields. Unknown keys → 400 per API contract. */
 export class PaginationQueryDto {
@@ -86,7 +91,7 @@ export class CandidatesQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  stageCode?: string;
+  candidateStage?: string;
 
   @ApiPropertyOptional({
     example: 'true',
@@ -124,23 +129,44 @@ export class OnboardingsQueryDto extends PaginationQueryDto {
 export class DashboardQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   taOwnerId?: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   salesOwnerId?: string;
 
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
-  @IsString()
+  @IsUUID()
   clientId?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ format: 'uuid' })
+  @IsOptional()
+  @IsUUID()
+  jobFamilyId?: string;
+
+  @ApiPropertyOptional({ example: 'HIGH' })
   @IsOptional()
   @IsString()
   priorityCode?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-07-01',
+    description: 'Inclusive requirement date lower bound',
+  })
+  @IsOptional()
+  @IsDateString()
+  from?: string;
+
+  @ApiPropertyOptional({
+    example: '2026-07-31',
+    description: 'Inclusive requirement date upper bound',
+  })
+  @IsOptional()
+  @IsDateString()
+  to?: string;
 }
 
 export class AuditQueryDto {

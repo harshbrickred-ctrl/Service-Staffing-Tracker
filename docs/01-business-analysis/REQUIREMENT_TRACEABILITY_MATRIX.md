@@ -107,11 +107,11 @@ MVP only. Future modules not traced here.
 
 | Excel KPI | FR | API | UI |
 |-----------|----|-----|-----|
-| Total Requirements/Positions/Open/Closed | FR-DASH-01 | `/dashboard/summary` | Dashboard |
+| Total Requirements/Positions/Open/Closed | FR-DASH-01 | `/dashboard` | Dashboard |
 | Pending Sales Handoff | FR-DASH-02 | same | card |
 | Candidates/Selected/Offers/Joined | FR-DASH-03 | same | cards |
 | Duplicate Mobiles | FR-DASH-04 | same | card |
-| Stage summary / RAG summary | FR-DASH-05/06 | `/dashboard/breakdowns` | tables |
+| Stage summary / RAG summary | FR-DASH-05/06 | `/dashboard` | tables |
 | At risk / overdue / cancelled / wasted | FR-DASH-07 | same | escalations |
 | Fill rate / avg days to fill | FR-DASH-08 | same | KPIs |
 | Filters | FR-DASH-09 | query params | filter bar |

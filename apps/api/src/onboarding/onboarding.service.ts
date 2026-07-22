@@ -27,20 +27,7 @@ export class OnboardingService {
     const offerInitiatedDate = row.offer?.offerInitiatedDate ?? null;
     const offerReleasedDate = row.offer?.offerReleasedDate ?? null;
     const offerStatus = row.offer?.statusCode ?? null;
-    const ctcRate = row.offer?.ctcRate  ? Number(row.offer.ctcRate): null;
-    const offerAcceptedDate = row.offerAcceptedDate ?? null;
-
-    const onboardingTATDays =
-      offerReleasedDate && offerAcceptedDate
-        ? Math.max(
-            0,
-            Math.round(
-              (offerAcceptedDate.getTime() -
-                offerReleasedDate.getTime()) /
-                (1000 * 60 * 60 * 24),
-            ),
-          )
-        : null;
+    const ctcRate = row.offer?.ctcRate ?? null;
 
     return {
       ...row,
@@ -59,15 +46,13 @@ export class OnboardingService {
       ctcRate,
 
       hrOwnerName: row.hrOwner?.fullName ?? null,
-
-      offerAcceptedDate,
       expectedDOJ: row.expectedDoj,
       pendingDocs: row.docsPending,
       bgvStatus: row.bgvStatusCode,
       joiningFormalities: row.joiningFormalities,
       actualDOJ: row.actualDoj,
       onboardingStatus: row.statusCode,
-      onboardingTATDays,
+      requirementStatus: row.requirement?.status ?? null,
       remarks: row.remarks,
     };
   }
@@ -123,6 +108,7 @@ export class OnboardingService {
               id: true,
               publicId: true,
               roleSkill: true,
+              status: true,
             },
           },
         },
@@ -236,102 +222,41 @@ export class OnboardingService {
       );
     }
 
-    if (dto.ctcRate !== undefined) {
-  await this.prisma.offer.update({
-    where: {
-      id: offer.id,
-    },
-    data: {
-      ctcRate: String(dto.ctcRate),
-    },
-  });
-}
-// Update Offer Status
-if (dto.offerStatus !== undefined) {
-  await this.prisma.offer.update({
-    where: {
-      id: offer.id,
-    },
-    data: {
-      statusCode: dto.offerStatus,
-    },
-  });
-}
-
-    const publicId =
-      await this.ids.next(
-        'onboarding',
-        'ONB',
-      );
-
-    const row =
-      await this.prisma.onboarding.create({
-        data: {
-          publicId,
-          offerId: offer.id,
-          candidateId: offer.candidateId,
-          requirementId: offer.requirementId,
-
-          hrOwnerId: dto.hrOwnerId,
-          docsPending:
-            dto.docsPending ?? true,
-
-          bgvStatusCode:
-            dto.bgvStatusCode,
-
-          joiningFormalities:
-            dto.joiningFormalities,
-
-          expectedDoj:
-            dto.expectedDoj
-              ? new Date(dto.expectedDoj)
-              : offer.expectedDoj,
-
-          offerAcceptedDate:
-            dto.offerAcceptedDate
-              ? new Date(
-                  dto.offerAcceptedDate,
-                )
-              : undefined,
-
-          statusCode:
-            dto.onboardingStatus ?? 'IN_PROGRESS',
-
-          remarks: dto.remarks,
+    const publicId = await this.ids.next('onboarding', 'ONB');
+    const row = await this.prisma.onboarding.create({
+      data: {
+        publicId,
+        offerId: offer.id,
+        candidateId: offer.candidateId,
+        requirementId: offer.requirementId,
+        hrOwnerId: dto.hrOwnerId,
+        docsPending: dto.docsPending ?? true,
+        bgvStatusCode: dto.bgvStatusCode,
+        joiningFormalities: dto.joiningFormalities,
+        expectedDoj: dto.expectedDoj
+          ? new Date(dto.expectedDoj)
+          : offer.expectedDoj,
+        statusCode: dto.statusCode ?? 'IN_PROGRESS',
+        remarks: dto.remarks,
+      },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            mobile: true,
+            email: true,
+          },
         },
-        include: {
-          candidate: {
-            select: {
-              id: true,
-              publicId: true,
-              name: true,
-              mobile: true,
-              email: true,
-            },
-          },
-          offer: {
-            select: {
-              id: true,
-              publicId: true,
-              statusCode: true,
-              offerInitiatedDate: true,
-              offerReleasedDate: true,
-              ctcRate: true,
-            },
-          },
-          hrOwner: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-          requirement: {
-            select: {
-              id: true,
-              publicId: true,
-              roleSkill: true,
-            },
+        offer: {
+          select: {
+            id: true,
+            publicId: true,
+            statusCode: true,
+            offerInitiatedDate: true,
+            offerReleasedDate: true,
+            ctcRate: true,
           },
         },
       });
@@ -347,139 +272,42 @@ if (dto.offerStatus !== undefined) {
     return this.mapOnboardingRow(row);
   }
 
-    async update(
-    id: string,
-    dto: UpdateOnboardingDto,
-    actorId: string,
-  ): Promise<any> {
-    const before =
-      await this.prisma.onboarding.findFirst({
-        where: {
-          id,
-          deletedAt: null,
-        },
-        include: {
-          offer: true,
-        },
-      });
-
-    if (!before) {
-      throw new NotFoundException(
-        'Onboarding not found',
-      );
-    }
-
-    // Update CTC in Offer table
-    if (
-      dto.ctcRate !== undefined &&
-      before.offerId
-    ) {
-      await this.prisma.offer.update({
-        where: {
-          id: before.offerId,
-        },
-        data: {
-          ctcRate: String(dto.ctcRate),
-        },
-      });
-    }
-
-    if (dto.offerStatus !== undefined) {
-  await this.prisma.offer.update({
-    where: {
-      id: before.offerId,
-    },
-    data: {
-      statusCode: dto.offerStatus,
-    },
-  });
-}
-
-    const row =
-      await this.prisma.onboarding.update({
-        where: {
-          id,
-        },
-        data: {
-          hrOwnerId:
-            dto.hrOwnerId,
-
-          docsPending:
-            dto.docsPending,
-
-          bgvStatusCode:
-            dto.bgvStatusCode,
-
-          joiningFormalities:
-            dto.joiningFormalities,
-
-          expectedDoj:
-            dto.expectedDoj === undefined
-              ? undefined
-              : dto.expectedDoj
-                ? new Date(
-                    dto.expectedDoj,
-                  )
-                : null,
-
-          offerAcceptedDate:
-            dto.offerAcceptedDate === undefined
-              ? undefined
-              : dto.offerAcceptedDate
-                ? new Date(
-                    dto.offerAcceptedDate,
-                  )
-                : null,
-
-          actualDoj:
-            dto.actualDoj === undefined
-              ? undefined
-              : dto.actualDoj
-                ? new Date(
-                    dto.actualDoj,
-                  )
-                : null,
-
-          remarks:
-            dto.remarks,
-        },
-
-        include: {
-          candidate: {
-            select: {
-              id: true,
-              publicId: true,
-              name: true,
-              mobile: true,
-              email: true,
-            },
-          },
-
-          offer: {
-            select: {
-              id: true,
-              publicId: true,
-              statusCode: true,
-              offerInitiatedDate: true,
-              offerReleasedDate: true,
-              ctcRate: true,
-            },
-          },
-
-          hrOwner: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-
-          requirement: {
-            select: {
-              id: true,
-              publicId: true,
-              roleSkill: true,
-            },
+  async update(id: string, dto: UpdateOnboardingDto, actorId: string): Promise<any> {
+    const before = await this.prisma.onboarding.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!before) throw new NotFoundException('Onboarding not found');
+    const row = await this.prisma.onboarding.update({
+      where: { id },
+      data: {
+        hrOwnerId: dto.hrOwnerId,
+        docsPending: dto.docsPending,
+        bgvStatusCode: dto.bgvStatusCode,
+        joiningFormalities: dto.joiningFormalities,
+        expectedDoj:
+          dto.expectedDoj === undefined
+            ? undefined
+            : dto.expectedDoj
+              ? new Date(dto.expectedDoj)
+              : null,
+        actualDoj:
+          dto.actualDoj === undefined
+            ? undefined
+            : dto.actualDoj
+              ? new Date(dto.actualDoj)
+              : null,
+        remarks: dto.remarks,
+      },
+      include: {
+        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+        offer: {
+          select: {
+            id: true,
+            publicId: true,
+            statusCode: true,
+            offerInitiatedDate: true,
+            offerReleasedDate: true,
+            ctcRate: true,
           },
         },
       });

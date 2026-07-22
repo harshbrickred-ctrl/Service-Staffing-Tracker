@@ -31,7 +31,10 @@ import {
   ApiMutateErrors,
   ApiProtectedErrors,
 } from '../common/swagger/api-decorators';
-import { OffersQueryDto } from '../common/swagger/query.dto';
+import {
+  CandidatesQueryDto,
+  OffersQueryDto,
+} from '../common/swagger/query.dto';
 
 @ApiTags('Offers')
 @ApiBearerAuth('bearer')
@@ -50,6 +53,20 @@ export class OffersController {
   @ApiProtectedErrors()
   list(@Query() query: OffersQueryDto) {
     return this.offers.list(query as Record<string, string>);
+  }
+
+  @Get('candidates')
+  @ApiOperation({
+    operationId: 'listOfferCandidates',
+    summary: 'List candidates mapped for the HR offer-details table',
+  })
+  @ApiOkResponse({
+    description:
+      'Candidate ID, name, position, client, contact, source, stage, RAG, status, and detail identifiers',
+  })
+  @ApiProtectedErrors()
+  listCandidates(@Query() query: CandidatesQueryDto) {
+    return this.offers.listCandidates(query as Record<string, string>);
   }
 
   @Get(':id')

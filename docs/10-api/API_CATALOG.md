@@ -191,13 +191,13 @@ Filters: `taOwnerId`, `salesOwnerId`, `priorityCode`, `clientId`, `jobFamilyId`,
 
 | Method | Path | Roles | Description |
 |--------|------|-------|-------------|
-| GET | `/dashboard/summary` | Auth | KPI cards |
-| GET | `/dashboard/breakdowns` | Auth | Stage + RAG tables |
-| GET | `/dashboard/escalations` | Auth | At risk, overdue, cancelled, wasted |
+| GET | `/dashboard` | Auth | KPI cards, breakdowns, and escalations |
 
 Query filters same as dashboard Excel filters.
 
-### Summary response (example)
+The response contains `summary`, `breakdowns`, and `escalations` sections.
+
+### Summary section (example)
 
 ```json
 {

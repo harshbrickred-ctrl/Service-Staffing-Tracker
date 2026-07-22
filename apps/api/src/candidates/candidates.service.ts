@@ -59,7 +59,7 @@ export class CandidatesService {
     const where: Prisma.CandidateWhereInput = {
       deletedAt: null,
       ...(query.requirementId ? { requirementId: query.requirementId } : {}),
-      ...(query.stageCode ? { stageCode: query.stageCode } : {}),
+      ...(query.candidateStage ? { stageCode: query.candidateStage } : {}),
       ...(query.selected !== undefined
         ? { selected: query.selected === 'true' }
         : {}),
@@ -136,6 +136,7 @@ export class CandidatesService {
     const emailNormalized = normalizeEmail(dto.email);
     const flags = await this.duplicateFlags(mobileNormalized, emailNormalized);
     const publicId = await this.ids.next('candidate', 'CAN');
+    const candidateStage = dto.candidateStage;
 
     const row = await this.prisma.candidate.create({
       data: {
@@ -147,11 +148,18 @@ export class CandidatesService {
         email: dto.email,
         emailNormalized,
         source: dto.source,
-        stageCode: dto.stageCode,
+        stageCode: candidateStage,
         feedbackCode: dto.candidateStatus,
         profileSubmittedDate: dto.profileSubmittedDate
           ? new Date(dto.profileSubmittedDate)
           : undefined,
+        clientShortlistDate:
+          dto.clientShortlistDate === undefined
+            ? undefined
+            : dto.clientShortlistDate
+            ? new Date(dto.clientShortlistDate)
+            : null,
+        interviewRound: dto.interviewRound,
         remarks: dto.remarks,
       },
       include: {
@@ -183,6 +191,7 @@ export class CandidatesService {
       ? normalizeEmail(dto.email)
       : before.emailNormalized;
 
+    const candidateStage = dto.candidateStage;
     const row = await this.prisma.candidate.update({
       where: { id },
       data: {
@@ -192,7 +201,7 @@ export class CandidatesService {
         email: dto.email,
         emailNormalized: dto.email ? emailNormalized : undefined,
         source: dto.source,
-        stageCode: dto.stageCode,
+        stageCode: candidateStage,
         feedbackCode: dto.candidateStatus,
         profileSubmittedDate:
           dto.profileSubmittedDate === undefined

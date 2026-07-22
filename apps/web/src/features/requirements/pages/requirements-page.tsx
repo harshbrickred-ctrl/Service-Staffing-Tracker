@@ -84,7 +84,11 @@ export function RequirementsPage() {
     onSuccess: (created) => {
       toast.success('Requirement created');
       setShowForm(false);
-      qc.invalidateQueries({ queryKey: requirementKeys.all });
+      qc.setQueryData(requirementKeys.detail(created.id), created);
+      qc.invalidateQueries({
+        queryKey: requirementKeys.lists(),
+        refetchType: 'none',
+      });
       qc.invalidateQueries({ queryKey: dashboardKeys.all });
       navigate(`/requirements/${created.id}`);
     },
