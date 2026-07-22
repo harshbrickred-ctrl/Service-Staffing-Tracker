@@ -27,14 +27,16 @@ export class OnboardingService {
     const offerInitiatedDate = row.offer?.offerInitiatedDate ?? null;
     const offerReleasedDate = row.offer?.offerReleasedDate ?? null;
     const offerStatus = row.offer?.statusCode ?? null;
-    const ctcRate = row.offer?.ctcRate ?? null;
+    const ctcRate = row.offer?.ctcRate  ? Number(row.offer.ctcRate): null;
     const offerAcceptedDate = row.offerAcceptedDate ?? null;
+
     const onboardingTATDays =
       offerReleasedDate && offerAcceptedDate
         ? Math.max(
             0,
             Math.round(
-              (offerAcceptedDate.getTime() - offerReleasedDate.getTime()) /
+              (offerAcceptedDate.getTime() -
+                offerReleasedDate.getTime()) /
                 (1000 * 60 * 60 * 24),
             ),
           )
@@ -50,11 +52,14 @@ export class OnboardingService {
       mobileNumber: row.candidate?.mobile,
       emailAddress: row.candidate?.email,
       clientRole: row.requirement?.roleSkill,
+
       offerInitiatedDate,
       offerReleasedDate,
       offerStatus,
       ctcRate,
+
       hrOwnerName: row.hrOwner?.fullName ?? null,
+
       offerAcceptedDate,
       expectedDOJ: row.expectedDoj,
       pendingDocs: row.docsPending,
@@ -67,19 +72,35 @@ export class OnboardingService {
     };
   }
 
-  async list(query: Record<string, string | undefined>): Promise<any> {
+  async list(
+    query: Record<string, string | undefined>,
+  ): Promise<any> {
     const page = Number(query.page ?? 1);
     const pageSize = Number(query.pageSize ?? 20);
+
     const where: Prisma.OnboardingWhereInput = {
       deletedAt: null,
-      ...(query.statusCode ? { statusCode: query.statusCode } : {}),
-      ...(query.requirementId ? { requirementId: query.requirementId } : {}),
+      ...(query.statusCode
+        ? { statusCode: query.statusCode }
+        : {}),
+      ...(query.requirementId
+        ? { requirementId: query.requirementId }
+        : {}),
     };
+
     const [items, total] = await Promise.all([
       this.prisma.onboarding.findMany({
         where,
         include: {
-          candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
+          candidate: {
+            select: {
+              id: true,
+              publicId: true,
+              name: true,
+              mobile: true,
+              email: true,
+            },
+          },
           offer: {
             select: {
               id: true,
@@ -90,108 +111,231 @@ export class OnboardingService {
               ctcRate: true,
             },
           },
-          hrOwner: { select: { id: true, fullName: true, email: true } },
+          hrOwner: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
           requirement: {
-            select: { id: true, publicId: true, roleSkill: true },
+            select: {
+              id: true,
+              publicId: true,
+              roleSkill: true,
+            },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
-      this.prisma.onboarding.count({ where }),
+
+      this.prisma.onboarding.count({
+        where,
+      }),
     ]);
-    return { items: items.map((row) => this.mapOnboardingRow(row)), total, page, pageSize };
+
+    return {
+      items: items.map((row) =>
+        this.mapOnboardingRow(row),
+      ),
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async get(id: string): Promise<any> {
-    const row = await this.prisma.onboarding.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        candidate: true,
-        offer: true,
-        hrOwner: { select: { id: true, fullName: true, email: true } },
-        requirement: { include: { client: true } },
-      },
-    });
-    if (!row) throw new NotFoundException('Onboarding not found');
+    const row =
+      await this.prisma.onboarding.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
+        include: {
+          candidate: true,
+          offer: true,
+          hrOwner: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          requirement: {
+            include: {
+              client: true,
+            },
+          },
+        },
+      });
+
+    if (!row) {
+      throw new NotFoundException(
+        'Onboarding not found',
+      );
+    }
+
     return this.mapOnboardingRow(row);
   }
 
-  async create(dto: CreateOnboardingDto, actorId: string): Promise<any> {
+  async create(
+    dto: CreateOnboardingDto,
+    actorId: string,
+  ): Promise<any> {
     const offer = await this.prisma.offer.findFirst({
-      where: { id: dto.offerId, deletedAt: null },
-      include: { onboarding: true },
-    });
-    if (!offer) throw new NotFoundException('Offer not found');
-    if (offer.statusCode !== 'ACCEPTED') {
-      throw new BadRequestException(
-        'Onboarding requires an accepted offer',
+    where: { 
+      candidate: { id: dto.candidateId },
+      deletedAt: null,
+    },
+    include: { onboarding: true },
+  });
+
+  if (!offer) {
+    throw new NotFoundException('Offer not found for this candidate');
+  }
+
+  if (offer.onboarding) {
+    throw new ConflictException('Onboarding already exists for this candidate');
+  }
+    const req =
+      await this.prisma.requirement.findFirst({
+        where: {
+          id: offer.requirementId,
+          deletedAt: null,
+        },
+      });
+
+    if (!req) {
+      throw new NotFoundException(
+        'Requirement not found',
       );
     }
-    if (offer.onboarding) {
-      throw new ConflictException('Onboarding already exists for offer');
-    }
 
-    const req = await this.prisma.requirement.findFirst({
-      where: { id: offer.requirementId, deletedAt: null },
-    });
-    if (!req) throw new NotFoundException('Requirement not found');
     if (req.status === 'CANCELLED') {
       throw new BadRequestException(
         'Cannot start onboarding for a Cancelled requirement',
       );
     }
 
-    const joined = await this.prisma.onboarding.count({
-      where: {
-        requirementId: offer.requirementId,
-        statusCode: 'JOINED',
-        deletedAt: null,
-      },
-    });
+    const joined =
+      await this.prisma.onboarding.count({
+        where: {
+          requirementId: offer.requirementId,
+          statusCode: 'JOINED',
+          deletedAt: null,
+        },
+      });
+
     if (joined >= req.numberOfPositions) {
       throw new BadRequestException(
         'All positions for this requirement are already filled',
       );
     }
 
-    const publicId = await this.ids.next('onboarding', 'ONB');
-    const row = await this.prisma.onboarding.create({
-      data: {
-        publicId,
-        offerId: offer.id,
-        candidateId: offer.candidateId,
-        requirementId: offer.requirementId,
-        hrOwnerId: dto.hrOwnerId,
-        docsPending: dto.docsPending ?? true,
-        bgvStatusCode: dto.bgvStatusCode,
-        joiningFormalities: dto.joiningFormalities,
-        expectedDoj: dto.expectedDoj
-          ? new Date(dto.expectedDoj)
-          : offer.expectedDoj,
-        offerAcceptedDate: dto.offerAcceptedDate
-          ? new Date(dto.offerAcceptedDate)
-          : undefined,
-        statusCode: dto.statusCode ?? 'IN_PROGRESS',
-        remarks: dto.remarks,
-      },
-      include: {
-        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
-        offer: {
-          select: {
-            id: true,
-            publicId: true,
-            statusCode: true,
-            offerInitiatedDate: true,
-            offerReleasedDate: true,
-            ctcRate: true,
+    if (dto.ctcRate !== undefined) {
+  await this.prisma.offer.update({
+    where: {
+      id: offer.id,
+    },
+    data: {
+      ctcRate: String(dto.ctcRate),
+    },
+  });
+}
+// Update Offer Status
+if (dto.offerStatus !== undefined) {
+  await this.prisma.offer.update({
+    where: {
+      id: offer.id,
+    },
+    data: {
+      statusCode: dto.offerStatus,
+    },
+  });
+}
+
+    const publicId =
+      await this.ids.next(
+        'onboarding',
+        'ONB',
+      );
+
+    const row =
+      await this.prisma.onboarding.create({
+        data: {
+          publicId,
+          offerId: offer.id,
+          candidateId: offer.candidateId,
+          requirementId: offer.requirementId,
+
+          hrOwnerId: dto.hrOwnerId,
+          docsPending:
+            dto.docsPending ?? true,
+
+          bgvStatusCode:
+            dto.bgvStatusCode,
+
+          joiningFormalities:
+            dto.joiningFormalities,
+
+          expectedDoj:
+            dto.expectedDoj
+              ? new Date(dto.expectedDoj)
+              : offer.expectedDoj,
+
+          offerAcceptedDate:
+            dto.offerAcceptedDate
+              ? new Date(
+                  dto.offerAcceptedDate,
+                )
+              : undefined,
+
+          statusCode:
+            dto.onboardingStatus ?? 'IN_PROGRESS',
+
+          remarks: dto.remarks,
+        },
+        include: {
+          candidate: {
+            select: {
+              id: true,
+              publicId: true,
+              name: true,
+              mobile: true,
+              email: true,
+            },
+          },
+          offer: {
+            select: {
+              id: true,
+              publicId: true,
+              statusCode: true,
+              offerInitiatedDate: true,
+              offerReleasedDate: true,
+              ctcRate: true,
+            },
+          },
+          hrOwner: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          requirement: {
+            select: {
+              id: true,
+              publicId: true,
+              roleSkill: true,
+            },
           },
         },
-        hrOwner: { select: { id: true, fullName: true, email: true } },
-        requirement: { select: { id: true, publicId: true, roleSkill: true } },
-      },
-    });
+      });
+
     await this.audit.log({
       entityType: 'Onboarding',
       entityId: row.id,
@@ -199,57 +343,147 @@ export class OnboardingService {
       actorUserId: actorId,
       after: row,
     });
+
     return this.mapOnboardingRow(row);
   }
 
-  async update(id: string, dto: UpdateOnboardingDto, actorId: string): Promise<any> {
-    const before = await this.prisma.onboarding.findFirst({
-      where: { id, deletedAt: null },
-    });
-    if (!before) throw new NotFoundException('Onboarding not found');
-    const row = await this.prisma.onboarding.update({
-      where: { id },
-      data: {
-        hrOwnerId: dto.hrOwnerId,
-        docsPending: dto.docsPending,
-        bgvStatusCode: dto.bgvStatusCode,
-        joiningFormalities: dto.joiningFormalities,
-        expectedDoj:
-          dto.expectedDoj === undefined
-            ? undefined
-            : dto.expectedDoj
-              ? new Date(dto.expectedDoj)
-              : null,
-        offerAcceptedDate:
-          dto.offerAcceptedDate === undefined
-            ? undefined
-            : dto.offerAcceptedDate
-              ? new Date(dto.offerAcceptedDate)
-              : null,
-        actualDoj:
-          dto.actualDoj === undefined
-            ? undefined
-            : dto.actualDoj
-              ? new Date(dto.actualDoj)
-              : null,
-        remarks: dto.remarks,
-      },
-      include: {
-        candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
-        offer: {
-          select: {
-            id: true,
-            publicId: true,
-            statusCode: true,
-            offerInitiatedDate: true,
-            offerReleasedDate: true,
-            ctcRate: true,
+    async update(
+    id: string,
+    dto: UpdateOnboardingDto,
+    actorId: string,
+  ): Promise<any> {
+    const before =
+      await this.prisma.onboarding.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
+        include: {
+          offer: true,
+        },
+      });
+
+    if (!before) {
+      throw new NotFoundException(
+        'Onboarding not found',
+      );
+    }
+
+    // Update CTC in Offer table
+    if (
+      dto.ctcRate !== undefined &&
+      before.offerId
+    ) {
+      await this.prisma.offer.update({
+        where: {
+          id: before.offerId,
+        },
+        data: {
+          ctcRate: String(dto.ctcRate),
+        },
+      });
+    }
+
+    if (dto.offerStatus !== undefined) {
+  await this.prisma.offer.update({
+    where: {
+      id: before.offerId,
+    },
+    data: {
+      statusCode: dto.offerStatus,
+    },
+  });
+}
+
+    const row =
+      await this.prisma.onboarding.update({
+        where: {
+          id,
+        },
+        data: {
+          hrOwnerId:
+            dto.hrOwnerId,
+
+          docsPending:
+            dto.docsPending,
+
+          bgvStatusCode:
+            dto.bgvStatusCode,
+
+          joiningFormalities:
+            dto.joiningFormalities,
+
+          expectedDoj:
+            dto.expectedDoj === undefined
+              ? undefined
+              : dto.expectedDoj
+                ? new Date(
+                    dto.expectedDoj,
+                  )
+                : null,
+
+          offerAcceptedDate:
+            dto.offerAcceptedDate === undefined
+              ? undefined
+              : dto.offerAcceptedDate
+                ? new Date(
+                    dto.offerAcceptedDate,
+                  )
+                : null,
+
+          actualDoj:
+            dto.actualDoj === undefined
+              ? undefined
+              : dto.actualDoj
+                ? new Date(
+                    dto.actualDoj,
+                  )
+                : null,
+
+          remarks:
+            dto.remarks,
+        },
+
+        include: {
+          candidate: {
+            select: {
+              id: true,
+              publicId: true,
+              name: true,
+              mobile: true,
+              email: true,
+            },
+          },
+
+          offer: {
+            select: {
+              id: true,
+              publicId: true,
+              statusCode: true,
+              offerInitiatedDate: true,
+              offerReleasedDate: true,
+              ctcRate: true,
+            },
+          },
+
+          hrOwner: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+
+          requirement: {
+            select: {
+              id: true,
+              publicId: true,
+              roleSkill: true,
+            },
           },
         },
-        hrOwner: { select: { id: true, fullName: true, email: true } },
-        requirement: { select: { id: true, publicId: true, roleSkill: true } },
-      },
-    });
+      });
+
     await this.audit.log({
       entityType: 'Onboarding',
       entityId: id,
@@ -258,8 +492,10 @@ export class OnboardingService {
       before,
       after: row,
     });
+
     return this.mapOnboardingRow(row);
   }
+
 
   async setStatus(
     id: string,
@@ -267,24 +503,45 @@ export class OnboardingService {
     actorId: string,
     actualDoj?: string,
   ): Promise<any> {
-    const before = await this.prisma.onboarding.findFirst({
-      where: { id, deletedAt: null },
-    });
-    if (!before) throw new NotFoundException('Onboarding not found');
-
-    if (statusCode === 'JOINED' && before.statusCode !== 'JOINED') {
-      const req = await this.prisma.requirement.findUnique({
-        where: { id: before.requirementId },
+    const before =
+      await this.prisma.onboarding.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+        },
       });
-      if (req) {
-        const joined = await this.prisma.onboarding.count({
+
+    if (!before) {
+      throw new NotFoundException(
+        'Onboarding not found',
+      );
+    }
+
+
+    if (
+      statusCode === 'JOINED' &&
+      before.statusCode !== 'JOINED'
+    ) {
+      const req =
+        await this.prisma.requirement.findUnique({
           where: {
-            requirementId: req.id,
-            statusCode: 'JOINED',
-            deletedAt: null,
+            id: before.requirementId,
           },
         });
-        if (joined >= req.numberOfPositions) {
+
+      if (req) {
+        const joined =
+          await this.prisma.onboarding.count({
+            where: {
+              requirementId: req.id,
+              statusCode: 'JOINED',
+              deletedAt: null,
+            },
+          });
+
+        if (
+          joined >= req.numberOfPositions
+        ) {
           throw new BadRequestException(
             'All positions for this requirement are already filled',
           );
@@ -292,61 +549,111 @@ export class OnboardingService {
       }
     }
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.onboarding.update({
-        where: { id },
-        data: {
-          statusCode,
-          actualDoj:
-            statusCode === 'JOINED'
-              ? actualDoj
-                ? new Date(actualDoj)
-                : before.actualDoj ?? new Date()
-              : before.actualDoj,
-          docsPending: statusCode === 'JOINED' ? false : before.docsPending,
-        },
-        include: {
-          candidate: { select: { id: true, publicId: true, name: true, mobile: true, email: true } },
-          offer: {
-            select: {
-              id: true,
-              publicId: true,
-              statusCode: true,
-              offerInitiatedDate: true,
-              offerReleasedDate: true,
-              ctcRate: true,
-            },
-          },
-          hrOwner: { select: { id: true, fullName: true, email: true } },
-          requirement: { select: { id: true, publicId: true, roleSkill: true } },
-        },
-      });
 
-      await this.audit.log(
-        {
-          entityType: 'Onboarding',
-          entityId: id,
-          action: 'STATUS',
-          actorUserId: actorId,
-          before: { statusCode: before.statusCode },
-          after: { statusCode: updated.statusCode },
+    const row =
+      await this.prisma.$transaction(
+        async (tx) => {
+          const updated =
+            await tx.onboarding.update({
+              where: {
+                id,
+              },
+
+              data: {
+                statusCode,
+
+                actualDoj:
+                  statusCode === 'JOINED'
+                    ? actualDoj
+                      ? new Date(
+                          actualDoj,
+                        )
+                      : before.actualDoj ??
+                        new Date()
+                    : before.actualDoj,
+
+                docsPending:
+                  statusCode === 'JOINED'
+                    ? false
+                    : before.docsPending,
+              },
+
+              include: {
+                candidate: {
+                  select: {
+                    id: true,
+                    publicId: true,
+                    name: true,
+                    mobile: true,
+                    email: true,
+                  },
+                },
+
+                offer: {
+                  select: {
+                    id: true,
+                    publicId: true,
+                    statusCode: true,
+                    offerInitiatedDate: true,
+                    offerReleasedDate: true,
+                    ctcRate: true,
+                  },
+                },
+
+                hrOwner: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    email: true,
+                  },
+                },
+
+                requirement: {
+                  select: {
+                    id: true,
+                    publicId: true,
+                    roleSkill: true,
+                  },
+                },
+              },
+            });
+
+
+          await this.audit.log(
+            {
+              entityType: 'Onboarding',
+              entityId: id,
+              action: 'STATUS',
+              actorUserId: actorId,
+              before: {
+                statusCode:
+                  before.statusCode,
+              },
+              after: {
+                statusCode:
+                  updated.statusCode,
+              },
+            },
+            tx,
+          );
+
+
+          if (
+            statusCode === 'JOINED' ||
+            before.statusCode === 'JOINED'
+          ) {
+            await this.requirements.syncFillStatus(
+              before.requirementId,
+              actorId,
+              tx,
+            );
+          }
+
+
+          return updated;
         },
-        tx,
       );
 
-      if (
-        statusCode === 'JOINED' ||
-        before.statusCode === 'JOINED'
-      ) {
-        await this.requirements.syncFillStatus(
-          before.requirementId,
-          actorId,
-          tx,
-        );
-      }
-
-      return updated;
-    });
 
     return this.mapOnboardingRow(row);
   }

@@ -1,6 +1,7 @@
 import {
   IsBoolean,
   IsDateString,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -10,11 +11,17 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class CreateOnboardingDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
-  offerId!: string;
+  candidateId!: string;  // Changed from offerId
 
+  
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   hrOwnerId!: string;
+
+  @ApiPropertyOptional({ example: 1200000 })
+  @IsOptional()
+  @IsNumber()
+  ctcRate?: number;
 
   @ApiPropertyOptional({ example: true })
   @IsOptional()
@@ -24,6 +31,16 @@ export class CreateOnboardingDto {
   @ApiProperty({ example: 'NOT_STARTED' })
   @IsString()
   bgvStatusCode!: string;
+
+  @ApiPropertyOptional({ example: 'ACCEPTED' })
+  @IsOptional()
+  @IsString()
+  offerStatus?: string;
+
+  @ApiPropertyOptional({ example: 'IN_PROGRESS' })
+  @IsOptional()
+  @IsString()
+  onboardingStatus?: string;
 
   @ApiPropertyOptional({ example: '' })
   @IsOptional()
@@ -43,11 +60,6 @@ export class CreateOnboardingDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  statusCode?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
   remarks?: string;
 }
 
@@ -56,6 +68,11 @@ export class UpdateOnboardingDto {
   @IsOptional()
   @IsUUID()
   hrOwnerId?: string;
+
+  @ApiPropertyOptional({ example: 1500000 })
+  @IsOptional()
+  @IsNumber()
+  ctcRate?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -66,6 +83,16 @@ export class UpdateOnboardingDto {
   @IsOptional()
   @IsString()
   bgvStatusCode?: string;
+
+  @ApiPropertyOptional({ example: 'ACCEPTED' })
+  @IsOptional()
+  @IsString()
+  offerStatus?: string;
+
+  @ApiPropertyOptional({ example: 'IN_PROGRESS' })
+  @IsOptional()
+  @IsString()
+  onboardingStatus?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
