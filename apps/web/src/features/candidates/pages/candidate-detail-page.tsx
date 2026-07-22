@@ -23,7 +23,7 @@ export function CandidateDetailPage() {
         ← Candidates
       </Link>
       <h1 className="mt-2 text-2xl font-semibold">{c.name}</h1>
-      <p className="font-mono text-sm text-primary">{c.publicId}</p>
+      <p className="font-mono text-sm text-primary">{c.id}</p>
       {(c.duplicateMobile || c.duplicateEmail) && (
         <div className="mt-4 rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           Duplicate warning:{' '}

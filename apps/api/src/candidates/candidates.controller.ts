@@ -57,7 +57,7 @@ export class CandidatesController {
     operationId: 'getCandidate',
     summary: 'Candidate detail including duplicate flags',
   })
-  @ApiParam({ name: 'id', description: 'UUID or publicId' })
+  @ApiParam({ name: 'id', description: 'Sequential candidate id (CAN-#####)' })
   @ApiOkResponse({ description: 'Candidate detail' })
   @ApiProtectedErrors()
   get(@Param('id') id: string): Promise<any> {

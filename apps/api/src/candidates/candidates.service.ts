@@ -68,7 +68,7 @@ export class CandidatesService {
             OR: [
               { name: { contains: query.q, mode: 'insensitive' } },
               { email: { contains: query.q, mode: 'insensitive' } },
-              { publicId: { contains: query.q, mode: 'insensitive' } },
+              { id: { contains: query.q, mode: 'insensitive' } },
               { mobile: { contains: query.q } },
             ],
           }
@@ -102,9 +102,13 @@ export class CandidatesService {
     };
   }
 
+  private normalizeId(id: string): string {
+    return /^CAN-\d+$/i.test(id) ? id.toUpperCase() : id;
+  }
+
   async get(id: string): Promise<any> {
     const row = await this.prisma.candidate.findFirst({
-      where: { id, deletedAt: null },
+      where: { id: this.normalizeId(id), deletedAt: null },
       include: {
         requirement: {
           include: { client: true },
@@ -135,12 +139,12 @@ export class CandidatesService {
     const mobileNormalized = normalizeMobile(dto.mobile);
     const emailNormalized = normalizeEmail(dto.email);
     const flags = await this.duplicateFlags(mobileNormalized, emailNormalized);
-    const publicId = await this.ids.next('candidate', 'CAN');
+    const id = await this.ids.next('candidate', 'CAN');
     const candidateStage = dto.candidateStage;
 
     const row = await this.prisma.candidate.create({
       data: {
-        publicId,
+        id,
         requirementId: dto.requirementId,
         name: dto.name,
         mobile: dto.mobile,
@@ -179,8 +183,9 @@ export class CandidatesService {
   }
 
   async update(id: string, dto: UpdateCandidateDto, actorId: string): Promise<any> {
+    const candidateId = this.normalizeId(id);
     const before = await this.prisma.candidate.findFirst({
-      where: { id, deletedAt: null },
+      where: { id: candidateId, deletedAt: null },
     });
     if (!before) throw new NotFoundException('Candidate not found');
 
@@ -193,7 +198,7 @@ export class CandidatesService {
 
     const candidateStage = dto.candidateStage;
     const row = await this.prisma.candidate.update({
-      where: { id },
+      where: { id: candidateId },
       data: {
         name: dto.name,
         mobile: dto.mobile,
@@ -231,7 +236,7 @@ export class CandidatesService {
     );
     await this.audit.log({
       entityType: 'Candidate',
-      entityId: id,
+      entityId: candidateId,
       action: 'UPDATE',
       actorUserId: actorId,
       before,
@@ -241,8 +246,9 @@ export class CandidatesService {
   }
 
   async select(id: string, selected: boolean, actorId: string): Promise<any> {
+    const candidateId = this.normalizeId(id);
     const before = await this.prisma.candidate.findFirst({
-      where: { id, deletedAt: null },
+      where: { id: candidateId, deletedAt: null },
       include: { offer: true },
     });
     if (!before) throw new NotFoundException('Candidate not found');
@@ -252,7 +258,7 @@ export class CandidatesService {
       );
     }
     const row = await this.prisma.candidate.update({
-      where: { id },
+      where: { id: candidateId },
       data: {
         selected,
         selectedAt: selected ? new Date() : null,
@@ -265,7 +271,7 @@ export class CandidatesService {
     });
     await this.audit.log({
       entityType: 'Candidate',
-      entityId: id,
+      entityId: candidateId,
       action: 'SELECT',
       actorUserId: actorId,
       before: { selected: before.selected },

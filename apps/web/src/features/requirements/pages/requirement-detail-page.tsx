@@ -392,7 +392,6 @@ export function RequirementDetailPage() {
               {candidates.data.items.map(
                 (c: {
                   id: string;
-                  publicId: string;
                   name: string;
                   stageCode: string;
                   selected: boolean;
@@ -405,7 +404,7 @@ export function RequirementDetailPage() {
                       className="text-primary hover:underline"
                       to={`/candidates/${c.id}`}
                     >
-                      {c.publicId} — {c.name}
+                      {c.id} — {c.name}
                     </Link>
                     <span className="font-mono text-xs text-muted-foreground">
                       {c.stageCode}

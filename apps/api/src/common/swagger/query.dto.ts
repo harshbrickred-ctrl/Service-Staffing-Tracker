@@ -30,7 +30,7 @@ export class PaginationQueryDto {
   sort?: string;
 
   @ApiPropertyOptional({
-    description: 'Search name / role / publicId where supported',
+    description: 'Search name / role / id where supported',
   })
   @IsOptional()
   @IsString()
