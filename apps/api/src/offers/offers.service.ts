@@ -17,62 +17,69 @@ export class OffersService {
     private readonly audit: AuditService,
     private readonly ids: IdSequenceService,
   ) {}
-
-  async list(query: Record<string, string | undefined>) {
-    const page = Number(query.page ?? 1);
-    const pageSize = Number(query.pageSize ?? 20);
-    const where: Prisma.OfferWhereInput = {
-      deletedAt: null,
-      ...(query.statusCode ? { statusCode: query.statusCode } : {}),
-      ...(query.requirementId ? { requirementId: query.requirementId } : {}),
-      ...(query.q
-        ? {
-            OR: [
-              { publicId: { contains: query.q, mode: 'insensitive' } },
-              {
-                candidate: {
-                  name: { contains: query.q, mode: 'insensitive' },
-                },
+async list(query: Record<string, string | undefined>) {
+  const page = Number(query.page ?? 1);
+  const pageSize = Number(query.pageSize ?? 20);
+  const where: Prisma.OfferWhereInput = {
+    deletedAt: null,
+    ...(query.statusCode ? { statusCode: query.statusCode } : {}),
+    ...(query.requirementId ? { requirementId: query.requirementId } : {}),
+    ...(query.q
+      ? {
+          OR: [
+            { publicId: { contains: query.q, mode: 'insensitive' } },
+            {
+              candidate: {
+                name: { contains: query.q, mode: 'insensitive' },
               },
-            ],
-          }
-        : {}),
-    };
-    const [records, total] = await Promise.all([
-      this.prisma.offer.findMany({
-        where,
-        include: {
-          candidate: {
-            select: {
-              id: true,
-              publicId: true,
-              name: true,
-              email: true,
-              mobile: true,
-              source: true,
-              stageCode: true,
             },
+          ],
+        }
+      : {}),
+  };
+  const [records, total] = await Promise.all([
+    this.prisma.offer.findMany({
+      where,
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            publicId: true,
+            name: true,
+            email: true,
+            mobile: true,
+            source: true,
+            stageCode: true,
           },
-          requirement: {
-            select: {
-              id: true,
-              publicId: true,
-              roleSkill: true,
-              client: {
-                select: { name: true },
-              },
+        },
+        requirement: {
+          select: {
+            roleSkill: true,
+            client: {
+              select: { name: true },
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      this.prisma.offer.count({ where }),
-    ]);
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    this.prisma.offer.count({ where }),
+  ]);
 
-    return { items: records, total, page, pageSize };
-  }
+  // Map to only the fields you need
+  const items = records.map((record) => ({
+    candidateId: record.candidate.id,
+    candidateName: record.candidate.name,
+    position: record.requirement.roleSkill,
+    client: record.requirement.client.name,
+    email: record.candidate.email,
+    mobile: record.candidate.mobile,
+    source: record.candidate.source,
+    stage: record.candidate.stageCode,
+    offerStatus: record.statusCode,
+  }));
 
   async listCandidates(query: Record<string, string | undefined>) {
     const page = Math.max(1, Number(query.page ?? 1) || 1);
@@ -171,18 +178,44 @@ export class OffersService {
   }
 
   async get(id: string): Promise<any> {
-    const row = await this.prisma.offer.findFirst({
-      where: { id, deletedAt: null },
-      include: {
-        candidate: true,
-        requirement: { include: { client: true } },
-        onboarding: true,
+  const row = await this.prisma.offer.findFirst({
+    where: { id, deletedAt: null },
+    include: {
+      candidate: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          mobile: true,
+          source: true,
+          stageCode: true,
+        },
       },
-    });
-    if (!row) throw new NotFoundException('Offer not found');
-    return row;
-  }
-
+      requirement: {
+        select: {
+          roleSkill: true,
+          client: {
+            select: { name: true },
+          },
+        },
+      },
+    },
+  });
+  if (!row) throw new NotFoundException('Offer not found');
+  
+  // Return only the fields you need
+  return {
+    candidateId: row.candidate.id,
+    candidateName: row.candidate.name,
+    position: row.requirement.roleSkill,
+    client: row.requirement.client.name,
+    email: row.candidate.email,
+    mobile: row.candidate.mobile,
+    source: row.candidate.source,
+    stage: row.candidate.stageCode,
+    offerStatus: row.statusCode,
+  };
+}
   async create(dto: CreateOfferDto, actorId: string) {
     const candidate = await this.prisma.candidate.findFirst({
       where: { id: dto.candidateId, deletedAt: null },
